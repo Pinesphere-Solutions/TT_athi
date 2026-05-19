@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<style>
+#order-listing {
+  --ss-sticky-col-1: 64px;
+  --ss-sticky-col-2: 132px;
+  --ss-sticky-col-3: 156px;
+  position: relative;
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+#order-listing thead th {
+  position: sticky; top: 0; z-index: 10;
+  background: #028084 !important; color: #e5fcff !important;
+  vertical-align: middle !important; border-bottom: 2.5px solid #bdbdbd !important;
+  padding: 8px 12px !important; white-space: normal !important;
+  line-height: 1.3 !important; font-weight: 600;
+}
+#order-listing th, #order-listing td {
+  border-right: 1.5px solid #bababa !important;
+  border-bottom: 1.5px solid #121413 !important;
+  background-clip: padding-box;
+}
+#order-listing tr, #order-listing td, #order-listing th {
+  height: 20px !important; padding: 4px 8px !important;
+}
+#order-listing th:nth-child(1), #order-listing td:nth-child(1) {
+  position: sticky; left: 0 !important; z-index: 14;
+  background: #f7fafd;
+  width: var(--ss-sticky-col-1); min-width: var(--ss-sticky-col-1); max-width: var(--ss-sticky-col-1);
+}
+#order-listing th:nth-child(2), #order-listing td:nth-child(2) {
+  position: sticky; left: var(--ss-sticky-col-1) !important; z-index: 14;
+  background: #f7fafd;
+  width: var(--ss-sticky-col-2); min-width: var(--ss-sticky-col-2); max-width: var(--ss-sticky-col-2);
+}
+#order-listing th:nth-child(3), #order-listing td:nth-child(3) {
+  position: sticky; left: calc(var(--ss-sticky-col-1) + var(--ss-sticky-col-2)) !important; z-index: 14;
+  background: #f7fafd;
+  width: var(--ss-sticky-col-3); min-width: var(--ss-sticky-col-3); max-width: var(--ss-sticky-col-3);
+  box-shadow: 1px 0 0 #bababa;
+}
+#order-listing thead th:nth-child(-n + 3) {
+  z-index: 18;
+  background: #028084 !important;
+  color: #e5fcff !important;
+}
+#order-listing th:nth-child(-n + 3),
+#order-listing td:nth-child(-n + 3) {
+  white-space: nowrap !important;
+}
+.ss-modal-overlay {
+  display: none; position: fixed; top: 0; left: 0;
+  width: 100vw; height: 100vh; background: rgba(15,23,42,0.32);
+  z-index: 10000; align-items: center; justify-content: center; padding: 16px;
+  backdrop-filter: blur(2px);
+}
+.ss-modal-overlay.open { display: flex; }
+.ss-modal-box {
+  background: #fff; border-radius: 8px; padding: 0; overflow: hidden;
+  box-shadow: 0 18px 44px rgba(15,23,42,0.18); border: 1px solid #dce4e8;
+  width: min(560px, calc(100vw - 32px)); min-width: 0; max-width: 560px;
+}
+.ss-modal-box h5 { margin: 0; padding: 14px 18px; font-weight: 700; color: #025254; background: #f7fbfb; border-bottom: 1px solid #dce4e8; display: flex; align-items: center; gap: 8px; }
+.ss-modal-body { padding: 16px 18px 14px; }
+.ss-modal-footer { padding: 14px 18px; border-top: 1px solid #e6ecef; background: #fbfcfd; display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.ss-modal-note { background: #eef8f8; border: 1px solid #c7e6e7; color: #025254; border-radius: 6px; padding: 8px 10px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+.ss-modal-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.ss-summary-card { background: #f8fbfc; border: 1px solid #dce7eb; border-radius: 8px; padding: 10px 12px; }
+.ss-summary-label { display: block; color: #62727b; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.ss-summary-value { display: block; color: #102a33; font-size: 14px; font-weight: 700; margin-top: 2px; word-break: break-word; }
+.ss-tray-panel { border: 1px solid #dce7eb; border-radius: 8px; overflow: hidden; background: #fff; }
+.ss-tray-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; background: #f7fbfb; border-bottom: 1px solid #e3ecef; color: #025254; font-size: 12px; font-weight: 700; }
+.ss-tray-count { color: #5f6f7a; font-weight: 600; }
+.ss-tray-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(126px, 1fr)); gap: 8px; padding: 12px; }
+.ss-tray-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 34px; padding: 7px 9px; border: 1px solid #d6e1e5; background: #fbfcfd; border-radius: 6px; color: #17333d; font-size: 12px; font-weight: 700; }
+.ss-tray-chip.is-linked { background: #eef8f1; border-color: #b9dfc8; }
+.ss-tray-index { color: #6b7b84; font-size: 11px; font-weight: 600; }
+.ss-tray-status { border-radius: 999px; padding: 2px 7px; background: #e8edf0; color: #53636d; font-size: 10px; font-weight: 700; }
+.ss-tray-chip.is-linked .ss-tray-status { background: #d8f0df; color: #17633a; }
+.ss-tray-empty { grid-column: 1 / -1; text-align: center; color: #6b7b84; padding: 12px; font-size: 12px; font-weight: 600; }
+.ss-btn-primary {
+  background: #028084; color: #fff; border: none; padding: 8px 18px;
+  border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.ss-btn-primary:hover { background: #016668; }
+.ss-btn-danger {
+  background: #dc3545; color: #fff; border: none; padding: 8px 16px;
+  border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
+}
+.ss-btn-danger:hover { background: #b02a37; }
+.ss-btn-success {
+  background: #198754; color: #fff; border: none; padding: 6px 16px;
+  border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 12px;
+}
+.ss-btn-success:hover { background: #146c43; }
+.ss-btn-secondary {
+  background: #6c757d; color: #fff; border: none; padding: 8px 18px;
+  border-radius: 6px; font-weight: 600; cursor: pointer;
+}
+tr.hold-row td {
+  background: #fff3cd !important; filter: blur(1px) opacity(0.7);
+}
+tr.hold-row td:first-child, tr.hold-row td:nth-child(2), tr.hold-row td:nth-child(3) {
+  filter: none !important; opacity: 1 !important;
+}
+
+/* Remark tooltip */
+.remark-tooltip-trigger { position: relative; display: inline-block; }
+.remark-tooltip {
+  position: absolute; top: 110%; left: 50%; transform: translateX(-50%);
+  width: 270px; background: #fff; border: 1px solid #ccc; border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease; padding: 15px; z-index: 1000;
+}
+.remark-close-btn {
+  position: absolute; top: 8px; right: 8px; background: #dc3545; color: white;
+  border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 16px;
+  font-weight: bold; cursor: pointer; display: none; line-height: 1; padding: 0;
+  transition: all 0.2s ease; z-index: 1001;
+}
+.remark-close-btn:hover { background: #c82333; transform: scale(1.05); }
+
+@media (pointer: coarse) and (min-width: 680px) and (max-width: 1400px) {
+  #order-listing {
+    --ss-sticky-col-1: 90px;
+    --ss-sticky-col-2: 150px;
+    --ss-sticky-col-3: 180px;
+  }
+  * { font-size: 20px !important; }
+}
+</style>
+
+<div class="content-wrapper">
+  <div class="row">
+    <div class="col-12 grid-margin stretch-card">
+      <div class="card">
+        <div class="card-body" style="padding-bottom:12px;">
+          <h5 class="text-left mt-0 mb-4" style="font-weight:700;">
+            Spider Spindle Z2 - Pick Table (Other Colors)
+          </h5>
+
+          <div class="table-responsive">
+            <table id="order-listing" class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>S.No</th>
+                  <th>Date & Time</th>
+                  <th>Plating Stk No</th>
+                  <th>Action</th>
+                  <th>Polishing Stk No</th>
+                  <th>Plating Color</th>
+                  <th>Category</th>
+                  <th>Polish Finish</th>
+                  <th>Version</th>
+                  <th>Tray Type</th>
+                  <th>Source</th>
+                  <th>Input Qty</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in master_data %}
+                <tr class="{% if item.spider_hold_lot %}hold-row{% endif %}"
+                    data-lot-id="{{ item.lot_id }}">
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ item.date_time|date:"d M Y H:i" }}</td>
+                  <td>
+                    {{ item.plating_stk_no }}
+                    {% if item.images %}
+                    <span style="cursor:pointer;color:#028084;">
+                      <i class="fa fa-image"></i>
+                    </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <button type="button" class="ss-btn-success btn-add-spider"
+                            data-lot-id="{{ item.lot_id }}">
+                      Add Spider
+                    </button>
+                  </td>
+                  <td>{{ item.polishing_stk_no }}</td>
+                  <td>{{ item.plating_color }}</td>
+                  <td>{{ item.category }}</td>
+                  <td>{{ item.polish_finish }}</td>
+                  <td>{{ item.version }}</td>
+                  <td>{{ item.tray_type }}</td>
+                  <td>{{ item.location }}</td>
+                  <td>{{ item.total_case_qty }}</td>
+                  <td style="position:relative;">
+                    <a href="#" title="Add Remark" class="remark-tooltip-trigger">
+                      <img src="{% static 'assets/icons/chat_icon.png' %}" alt="Chat"
+                        style="width:20px;height:20px;{% if item.spider_pick_remarks %}filter:grayscale(0) brightness(1.1) sepia(1) hue-rotate(80deg) saturate(3) contrast(1.2);opacity:1;{% else %}filter:grayscale(1) brightness(0.8);opacity:0.7;{% endif %}" />
+                      <div class="remark-tooltip">
+                        <button type="button" class="remark-close-btn">&times;</button>
+                        <textarea placeholder="Type your remark..." style="width:75%;height:40px;resize:vertical;border:1px solid #ccc;padding:5px;border-radius:4px;font-size:14px;"{% if item.spider_pick_remarks %} readonly{% endif %}>{{ item.spider_pick_remarks|default_if_none:"" }}</textarea>
+                        <div style="text-align:right;margin-top:-35px">
+                          {% if not item.spider_pick_remarks %}
+                          <button type="button" class="remark-send-btn" data-lot-id="{{ item.lot_id }}"
+                            style="background-color:#007bff;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;">
+                            <i class="fa fa-send"></i>
+                          </button>
+                          {% else %}
+                          <div style="margin-top:40px;color:#31708f;background:#d9edf7;border:1px solid #bce8f1;border-radius:4px;padding:8px 12px;font-size:10px;text-align:left;">
+                            <i class="fa fa-info-circle"></i> Remark already saved.
+                          </div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </a>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="13" class="text-center text-muted py-4">
+                    No lots pending for Spider Spindle Z2.
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          {% if page_obj.has_other_pages %}
+          <div class="pagination-wrapper mt-3 d-flex justify-content-center">
+            <nav>
+              <ul class="pagination pagination-sm">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a>
+                </li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                  <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a>
+                </li>
+                {% endif %}
+              </ul>
+            </nav>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Spider Modal -->
+<div class="ss-modal-overlay" id="addSpiderModal">
+  <div class="ss-modal-box">
+    <h5><i class="fa fa-plus-circle"></i> Add Spider - Z2</h5>
+    <div class="ss-modal-body">
+      <div class="ss-modal-note">Ready for backend tray release.</div>
+      <input type="hidden" id="modalLotId" />
+      <div class="ss-modal-summary">
+        <div class="ss-summary-card">
+          <span class="ss-summary-label">Plating Stk No</span>
+          <span class="ss-summary-value" id="modalPlatingStkNoText">-</span>
+        </div>
+        <div class="ss-summary-card">
+          <span class="ss-summary-label">Lot Qty</span>
+          <span class="ss-summary-value" id="modalTotalQtyText">-</span>
+        </div>
+      </div>
+      <div class="ss-tray-panel">
+        <div class="ss-tray-panel-header">
+          <span>Tray IDs</span>
+          <span class="ss-tray-count" id="modalTrayCount">0 trays</span>
+        </div>
+        <div class="ss-tray-list" id="modalTrayList">
+          <div class="ss-tray-empty">Loading...</div>
+        </div>
+      </div>
+    </div>
+    <div class="ss-modal-footer">
+      <button type="button" class="ss-btn-secondary" id="cancelSpiderBtn">Cancel</button>
+      <button type="button" class="ss-btn-danger" id="delinkAllBtn" style="display:none;">
+        <i class="fa fa-unlink"></i> Delink All
+      </button>
+      <button type="button" class="ss-btn-primary" id="confirmSpiderBtn">
+        <i class="fa fa-check"></i> Proceed
+      </button>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value
+    || '{{ csrf_token }}';
+
+  // --- Add Spider Modal: open and fetch tray list ---
+  document.querySelectorAll('.btn-add-spider').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const lotId = this.dataset.lotId;
+      document.getElementById('modalLotId').value = lotId;
+      document.getElementById('modalPlatingStkNoText').textContent = '-';
+      document.getElementById('modalTotalQtyText').textContent = '-';
+      document.getElementById('modalTrayCount').textContent = '0 trays';
+      document.getElementById('modalTrayList').innerHTML = '<div class="ss-tray-empty">Loading...</div>';
+      document.getElementById('confirmSpiderBtn').style.display = '';
+      document.getElementById('delinkAllBtn').style.display = 'none';
+      document.getElementById('confirmSpiderBtn').disabled = false;
+      document.getElementById('delinkAllBtn').disabled = false;
+      document.getElementById('addSpiderModal').classList.add('open');
+
+      fetch(`{% url 'ss_z2_get_all_trays' %}?lot_id=${encodeURIComponent(lotId)}`)
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('modalPlatingStkNoText').textContent = data.plating_stk_no || '-';
+          document.getElementById('modalTotalQtyText').textContent = data.total_case_qty || '-';
+          const trayList = document.getElementById('modalTrayList');
+          if (!data.trays || data.trays.length === 0) {
+            trayList.innerHTML = '<div class="ss-tray-empty">No trays found.</div>';
+            document.getElementById('modalTrayCount').textContent = '0 trays';
+            document.getElementById('confirmSpiderBtn').style.display = 'none';
+            return;
+          }
+          const hasLinked = data.trays.some(t => t.linked);
+          trayList.innerHTML = '';
+          document.getElementById('modalTrayCount').textContent = data.trays.length + (data.trays.length === 1 ? ' tray' : ' trays');
+          data.trays.forEach((t, i) => {
+            const chip = document.createElement('div');
+            chip.className = 'ss-tray-chip' + (t.linked ? ' is-linked' : '');
+            const index = document.createElement('span');
+            index.className = 'ss-tray-index';
+            index.textContent = String(i + 1).padStart(2, '0');
+            const trayId = document.createElement('span');
+            trayId.textContent = t.tray_id || '-';
+            const status = document.createElement('span');
+            status.className = 'ss-tray-status';
+            status.textContent = t.linked ? 'Linked' : 'Ready';
+            chip.append(index, trayId, status);
+            trayList.appendChild(chip);
+          });
+          if (hasLinked) {
+            document.getElementById('delinkAllBtn').style.display = '';
+            document.getElementById('confirmSpiderBtn').style.display = 'none';
+          }
+        })
+        .catch(() => {
+          document.getElementById('modalTrayList').innerHTML = '<div class="ss-tray-empty text-danger">Error loading trays.</div>';
+          document.getElementById('modalTrayCount').textContent = '0 trays';
+        });
+    });
+  });
+
+  // --- Cancel Modal ---
+  document.getElementById('cancelSpiderBtn').addEventListener('click', function() {
+    document.getElementById('addSpiderModal').classList.remove('open');
+  });
+  document.getElementById('addSpiderModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+
+  // --- Confirm Add Spider ---
+  document.getElementById('confirmSpiderBtn').addEventListener('click', function() {
+    const lotId = document.getElementById('modalLotId').value;
+    if (!lotId) { Swal.fire('Error', 'Missing lot ID.', 'error'); return; }
+    const btn = this;
+    Swal.fire({
+      title: 'Proceed Add Spider',
+      text: 'This will delink this lot\'s tray IDs and release them for reuse.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#028084',
+      confirmButtonText: 'Proceed'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      btn.disabled = true;
+      fetch("{% url 'ss_z2_add_spider' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ lot_id: lotId })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({ title: 'Success', text: data.message || 'Spider added successfully!', icon: 'success', timer: 1500, showConfirmButton: false }).then(() => {
+            window.location.href = "{% url 'ss_z2_completed' %}";
+          });
+        } else {
+          Swal.fire('Error', data.error || 'Failed to add spider.', 'error');
+          btn.disabled = false;
+        }
+      })
+      .catch(() => { Swal.fire('Error', 'Network error.', 'error'); btn.disabled = false; });
+    });
+  });
+
+  // --- Delink All ---
+  document.getElementById('delinkAllBtn').addEventListener('click', function() {
+    const lotId = document.getElementById('modalLotId').value;
+    if (!lotId) { Swal.fire('Error', 'Missing lot ID.', 'error'); return; }
+    const btn = this;
+    Swal.fire({
+      title: 'Delink All Trays?',
+      text: 'This will release all linked trays for reuse.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: 'Yes, Delink All'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      btn.disabled = true;
+      fetch("{% url 'ss_z2_delink' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ lot_id: lotId })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({ title: 'Delinked', text: 'All trays delinked successfully!', icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
+        } else {
+          Swal.fire('Error', data.error || 'Failed to delink.', 'error');
+          btn.disabled = false;
+        }
+      })
+      .catch(() => { Swal.fire('Error', 'Network error.', 'error'); btn.disabled = false; });
+    });
+  });
+
+  // --- Remark Tooltip ---
+  document.querySelectorAll('.remark-tooltip-trigger').forEach(trigger => {
+    const tooltip = trigger.querySelector('.remark-tooltip');
+    const closeBtn = tooltip ? tooltip.querySelector('.remark-close-btn') : null;
+    const sendBtn = tooltip ? tooltip.querySelector('.remark-send-btn') : null;
+
+    function positionTooltip() {
+      if (!tooltip) return;
+      const rect = trigger.getBoundingClientRect();
+      const tw = 300;
+      let top = rect.bottom + 8;
+      let left = rect.left + rect.width / 2 - tw / 2;
+      if (left + tw > window.innerWidth - 10) left = window.innerWidth - tw - 10;
+      if (left < 10) left = 10;
+      if (top + 150 > window.innerHeight - 10) top = rect.top - 150 - 8;
+      if (top < 10) top = 10;
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+      tooltip.style.right = 'auto';
+      tooltip.style.transform = 'none';
+    }
+
+    function showTooltip() {
+      if (!tooltip) return;
+      if (tooltip.parentNode !== document.body) {
+        if (!tooltip._placeholder) {
+          const ph = document.createElement('span');
+          ph.style.display = 'none';
+          tooltip.parentNode.insertBefore(ph, tooltip);
+          tooltip._placeholder = ph;
+        }
+        document.body.appendChild(tooltip);
+      }
+      tooltip.style.position = 'fixed';
+      tooltip.style.display = 'block';
+      tooltip.style.opacity = '1';
+      tooltip.style.visibility = 'visible';
+      tooltip.style.zIndex = '1000000';
+      if (closeBtn) closeBtn.style.display = 'block';
+      positionTooltip();
+    }
+
+    function hideTooltip() {
+      if (!tooltip) return;
+      tooltip.style.opacity = '0';
+      tooltip.style.visibility = 'hidden';
+      tooltip.style.display = 'none';
+      if (closeBtn) closeBtn.style.display = 'none';
+      if (tooltip._placeholder && tooltip._placeholder.parentNode) {
+        tooltip._placeholder.parentNode.insertBefore(tooltip, tooltip._placeholder);
+        tooltip._placeholder.remove();
+        tooltip._placeholder = null;
+      }
+    }
+
+    trigger.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (tooltip.style.visibility === 'visible') hideTooltip();
+      else showTooltip();
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      hideTooltip();
+    });
+
+    if (sendBtn) {
+      sendBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const textarea = tooltip.querySelector('textarea');
+        const remark = textarea ? textarea.value.trim() : '';
+        if (!remark) { Swal.fire('Warning', 'Please enter a remark.', 'warning'); return; }
+        const lotId = this.dataset.lotId;
+        fetch("{% url 'ss_z2_save_remarks' %}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+          body: JSON.stringify({ lot_id: lotId, remarks: remark })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            if (textarea) { textarea.value = remark; textarea.setAttribute('readonly', true); }
+            this.outerHTML = '<div style="margin-top:40px;color:#31708f;background:#d9edf7;border:1px solid #bce8f1;border-radius:4px;padding:8px 12px;font-size:10px;text-align:left;"><i class="fa fa-info-circle"></i> Remark saved.</div>';
+            const img = trigger.querySelector('img');
+            if (img) { img.style.filter = 'grayscale(0) brightness(1.1) sepia(1) hue-rotate(80deg) saturate(3) contrast(1.2)'; img.style.opacity = '1'; }
+            Swal.fire({ title: 'Saved', text: 'Remark saved successfully!', icon: 'success', timer: 1500, showConfirmButton: false });
+          }
+        })
+        .catch(() => { Swal.fire('Error', 'Network error.', 'error'); });
+      });
+    }
+  });
+});
+</script>
+{% endblock %}

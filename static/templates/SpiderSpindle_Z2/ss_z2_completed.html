@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<style>
+#order-listing {
+  --ss-sticky-col-1: 64px;
+  --ss-sticky-col-2: 132px;
+  --ss-sticky-col-3: 156px;
+  position: relative;
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+#order-listing thead th {
+  position: sticky; top: 0; z-index: 10;
+  background: #028084 !important; color: #e5fcff !important;
+  vertical-align: middle !important; border-bottom: 2.5px solid #bdbdbd !important;
+  padding: 8px 12px !important; white-space: normal !important;
+  line-height: 1.3 !important; font-weight: 600;
+}
+#order-listing th, #order-listing td {
+  border-right: 1.5px solid #bababa !important;
+  border-bottom: 1.5px solid #121413 !important;
+  background-clip: padding-box;
+}
+#order-listing tr, #order-listing td, #order-listing th {
+  height: 20px !important; padding: 4px 8px !important;
+}
+#order-listing th:nth-child(1), #order-listing td:nth-child(1) {
+  position: sticky; left: 0 !important; z-index: 14;
+  background: #f7fafd;
+  width: var(--ss-sticky-col-1); min-width: var(--ss-sticky-col-1); max-width: var(--ss-sticky-col-1);
+}
+#order-listing th:nth-child(2), #order-listing td:nth-child(2) {
+  position: sticky; left: var(--ss-sticky-col-1) !important; z-index: 14;
+  background: #f7fafd;
+  width: var(--ss-sticky-col-2); min-width: var(--ss-sticky-col-2); max-width: var(--ss-sticky-col-2);
+}
+#order-listing th:nth-child(3), #order-listing td:nth-child(3) {
+  position: sticky; left: calc(var(--ss-sticky-col-1) + var(--ss-sticky-col-2)) !important; z-index: 14;
+  background: #f7fafd;
+  width: var(--ss-sticky-col-3); min-width: var(--ss-sticky-col-3); max-width: var(--ss-sticky-col-3);
+  box-shadow: 1px 0 0 #bababa;
+}
+#order-listing thead th:nth-child(-n + 3) {
+  z-index: 18;
+  background: #028084 !important;
+  color: #e5fcff !important;
+}
+#order-listing th:nth-child(-n + 3),
+#order-listing td:nth-child(-n + 3) {
+  white-space: nowrap !important;
+}
+.calendar-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.calendar-bar label { font-weight: 600; font-size: 13px; }
+.calendar-bar input[type="date"] { padding: 4px 8px; border: 1px solid #ccc; border-radius: 6px; }
+.ss-btn-primary {
+  background: #028084; color: #fff; border: none; padding: 6px 16px;
+  border-radius: 6px; font-weight: 600; cursor: pointer;
+}
+.ss-btn-primary:hover { background: #016668; }
+.ss-btn-secondary {
+  background: #6c757d; color: #fff; border: none; padding: 6px 16px;
+  border-radius: 6px; font-weight: 600; cursor: pointer;
+}
+.ss-tray-view-btn {
+  background: transparent; border: none; padding: 2px 4px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; color: #028084;
+}
+.ss-tray-view-btn img { width: 22px; height: 22px; object-fit: contain; }
+.ss-tray-count-pill {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px;
+  border-radius: 999px; background: #e7f7f7; border: 1px solid #b9e5e6; color: #025254;
+  font-size: 11px; font-weight: 700; padding: 0 6px;
+}
+.ss-tray-view-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.34);
+  z-index: 100000; align-items: center; justify-content: center; padding: 16px;
+}
+.ss-tray-view-overlay.open { display: flex; }
+.ss-tray-view-box {
+  background: #fff; border: 1px solid #dce7eb; border-radius: 8px; width: min(460px, calc(100vw - 32px));
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18); overflow: hidden;
+}
+.ss-tray-view-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; background: #f7fbfb; border-bottom: 1px solid #dce7eb;
+}
+.ss-tray-view-title { color: #025254; font-size: 15px; font-weight: 700; margin: 0; }
+.ss-tray-view-close { background: transparent; border: none; color: #60727c; font-size: 24px; line-height: 1; cursor: pointer; }
+.ss-tray-view-body { padding: 14px 16px 16px; }
+.ss-tray-view-meta { color: #51656f; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
+.ss-tray-view-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.ss-tray-view-chip {
+  display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 7px 9px;
+  border: 1px solid #cfe0e5; background: #fbfcfd; border-radius: 6px; color: #17333d; font-size: 12px; font-weight: 700;
+}
+.ss-tray-view-index { color: #6b7b84; font-size: 11px; font-weight: 600; }
+.ss-tray-view-empty { text-align: center; color: #6b7b84; padding: 12px; font-size: 12px; font-weight: 600; }
+@media (pointer: coarse) and (min-width: 680px) and (max-width: 1400px) {
+  #order-listing {
+    --ss-sticky-col-1: 90px;
+    --ss-sticky-col-2: 150px;
+    --ss-sticky-col-3: 180px;
+  }
+  * { font-size: 20px !important; }
+}
+</style>
+
+<div class="content-wrapper">
+  <div class="row">
+    <div class="col-12 grid-margin stretch-card">
+      <div class="card">
+        <div class="card-body" style="padding-bottom:12px;">
+          <h5 class="text-left mt-0 mb-3" style="font-weight:700;">
+            Spider Spindle Z2 - Completed Table (Other Colors)
+          </h5>
+
+          <form method="get" class="calendar-bar">
+            <div class="date-input-group">
+              <label>From:</label>
+              <input type="date" name="from_date" value="{{ from_date }}" />
+            </div>
+            <div class="date-input-group">
+              <label>To:</label>
+              <input type="date" name="to_date" value="{{ to_date }}" />
+            </div>
+            <button type="submit" class="ss-btn-primary">Search</button>
+            <a href="{% url 'ss_z2_completed' %}" class="ss-btn-secondary" style="text-decoration:none;">Clear</a>
+          </form>
+
+          <div class="table-responsive">
+            <table id="order-listing" class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>S.No</th>
+                  <th>Lot ID</th>
+                  <th>Completed At</th>
+                  <th>Plating Stk No</th>
+                  <th>Polishing Stk No</th>
+                  <th>Plating Color</th>
+                  <th>Category</th>
+                  <th>Polish Finish</th>
+                  <th>Version</th>
+                  <th>Tray Type</th>
+                  <th>Source</th>
+                  <th>Input Qty</th>
+                  <th>Tray ID</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in master_data %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>
+                    {{ item.lot_id }}
+                    {% if item.images %}
+                    <span style="cursor:pointer;color:#028084;">
+                      <i class="fa fa-image"></i>
+                    </span>
+                    {% endif %}
+                  </td>
+                  <td>{{ item.completed_at|date:"d M Y H:i" }}</td>
+                  <td>{{ item.plating_stk_no }}</td>
+                  <td>{{ item.polishing_stk_no }}</td>
+                  <td>{{ item.plating_color }}</td>
+                  <td>{{ item.category }}</td>
+                  <td>{{ item.polish_finish }}</td>
+                  <td>{{ item.version }}</td>
+                  <td>{{ item.tray_type }}</td>
+                  <td>{{ item.location }}</td>
+                  <td>{{ item.total_case_qty }}</td>
+                  <td>
+                    {% if item.linked_tray_ids %}
+                      <button type="button" class="ss-tray-view-btn" title="View delinked tray IDs"
+                              data-lot-id="{{ item.lot_id }}"
+                              data-tray-ids="{{ item.linked_tray_ids|join:'|' }}">
+                        <img src="{% static 'assets/icons/view.png' %}" alt="View" />
+                        <span class="ss-tray-count-pill">{{ item.linked_tray_count }}</span>
+                      </button>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ item.spider_pick_remarks }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="14" class="text-center text-muted py-4">
+                    No completed Spider Spindle Z2 records found for selected date range.
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          {% if page_obj.has_other_pages %}
+          <div class="pagination-wrapper mt-3 d-flex justify-content-center">
+            <nav>
+              <ul class="pagination pagination-sm">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}&from_date={{ from_date }}&to_date={{ to_date }}">&laquo;</a>
+                </li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                  <a class="page-link" href="?page={{ num }}&from_date={{ from_date }}&to_date={{ to_date }}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}&from_date={{ from_date }}&to_date={{ to_date }}">&raquo;</a>
+                </li>
+                {% endif %}
+              </ul>
+            </nav>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ss-tray-view-overlay" id="ssTrayViewOverlay" aria-hidden="true">
+  <div class="ss-tray-view-box" role="dialog" aria-modal="true" aria-labelledby="ssTrayViewTitle">
+    <div class="ss-tray-view-header">
+      <h5 class="ss-tray-view-title" id="ssTrayViewTitle">Delinked Tray IDs</h5>
+      <button type="button" class="ss-tray-view-close" id="ssTrayViewClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="ss-tray-view-body">
+      <div class="ss-tray-view-meta" id="ssTrayViewMeta">Lot: -</div>
+      <div class="ss-tray-view-list" id="ssTrayViewList"></div>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  const overlay = document.getElementById('ssTrayViewOverlay');
+  const closeBtn = document.getElementById('ssTrayViewClose');
+  const meta = document.getElementById('ssTrayViewMeta');
+  const list = document.getElementById('ssTrayViewList');
+
+  function closeTrayView() {
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  function openTrayView(button) {
+    const lotId = button.getAttribute('data-lot-id') || '-';
+    const trayIds = (button.getAttribute('data-tray-ids') || '').split('|').map(function(trayId) {
+      return trayId.trim();
+    }).filter(Boolean);
+
+    meta.textContent = 'Lot: ' + lotId + ' | ' + trayIds.length + (trayIds.length === 1 ? ' tray' : ' trays');
+    list.innerHTML = '';
+    if (!trayIds.length) {
+      const empty = document.createElement('div');
+      empty.className = 'ss-tray-view-empty';
+      empty.textContent = 'No tray IDs found.';
+      list.appendChild(empty);
+    } else {
+      trayIds.forEach(function(trayId, index) {
+        const chip = document.createElement('div');
+        chip.className = 'ss-tray-view-chip';
+        const serial = document.createElement('span');
+        serial.className = 'ss-tray-view-index';
+        serial.textContent = String(index + 1).padStart(2, '0');
+        const value = document.createElement('span');
+        value.textContent = trayId;
+        chip.append(serial, value);
+        list.appendChild(chip);
+      });
+    }
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+    closeBtn.focus();
+  }
+
+  document.querySelectorAll('.ss-tray-view-btn').forEach(function(button) {
+    button.addEventListener('click', function() {
+      openTrayView(button);
+    });
+  });
+  closeBtn.addEventListener('click', closeTrayView);
+  overlay.addEventListener('click', function(event) {
+    if (event.target === overlay) closeTrayView();
+  });
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && overlay.classList.contains('open')) closeTrayView();
+  });
+});
+</script>
+{% endblock %}
