@@ -20,11 +20,20 @@ from math import ceil
 from django.db.models import Q
 from rest_framework.decorators import api_view, permission_classes
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 from Recovery_DP.models import * 
 from Recovery_IS.models import *
 from modelmasterapp.models import *
 
 import pytz
+
+def _serialize_model_images(master_data):
+    """Convert model_images lists to JSON strings for safe template rendering."""
+    for row in master_data:
+        if 'model_images' in row:
+            images = row['model_images']
+            row['model_images'] = mark_safe(json.dumps(images))
+    return master_data
 
 class RIS_PickTable(APIView):
     renderer_classes = [TemplateHTMLRenderer]
@@ -270,6 +279,7 @@ class RIS_PickTable(APIView):
                 data['ip_rejection_total_qty'] = 0
                 print(f"No lot_id for batch {data.get('batch_id')}")
 
+        master_data = _serialize_model_images(master_data)
         context = {
             'master_data': master_data,
             'page_obj': page_obj,
@@ -2902,6 +2912,7 @@ class RIS_Completed_Table(APIView):
         accepted_data = [d for d in master_data if d.get('accepted_Ip_stock')]
         rejected_data = [d for d in master_data if d.get('rejected_ip_stock') or d.get('few_cases_accepted_Ip_stock')]
 
+        master_data = _serialize_model_images(master_data)
         
         # 🔥 NEW: Add date information to context
         context = {

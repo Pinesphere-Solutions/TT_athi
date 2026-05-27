@@ -11,6 +11,7 @@ from modelmasterapp.models import *
 from modelmasterapp.models import *
 from django.contrib import messages
 from django.utils.safestring import mark_safe
+import json
 import re
 import openpyxl
 from rest_framework.views import APIView
@@ -47,6 +48,14 @@ from .models import *
 from modelmasterapp.models import *
 
 import pytz
+
+def _serialize_model_images(master_data):
+    """Convert model_images lists to JSON strings for safe template rendering."""
+    for row in master_data:
+        if 'model_images' in row:
+            images = row['model_images']
+            row['model_images'] = mark_safe(json.dumps(images))
+    return master_data
 
 
 class RBulkUploadView(APIView):
@@ -1369,7 +1378,7 @@ class RDayPlanningPickTableAPIView(APIView):
             data['model_images'] = images
 
         context = {
-            'master_data': master_data,
+            'master_data': _serialize_model_images(master_data),  # ✅ JSON serialize images
             'page_obj': page_obj,
             'paginator': paginator,
             'user': user,

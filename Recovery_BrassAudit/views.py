@@ -6,6 +6,7 @@ from django.db.models import OuterRef, Subquery, Exists, F
 from django.core.paginator import Paginator
 from django.templatetags.static import static
 import math
+from django.utils.safestring import mark_safe
 from modelmasterapp.models import *
 from Recovery_DP.models import *
 from Recovery_IS.models import *
@@ -28,6 +29,14 @@ from Recovery_BrassAudit.models import *
 from Recovery_Brass_QC.models import *
 from django.utils import timezone
 from Jig_Loading.models import *
+
+def _serialize_model_images(master_data):
+    """Convert model_images lists to JSON strings for safe template rendering."""
+    for row in master_data:
+        if 'model_images' in row:
+            images = row['model_images']
+            row['model_images'] = mark_safe(json.dumps(images))
+    return master_data
 
 class RecoveryBrassAuditPickTableView(APIView):
     renderer_classes = [TemplateHTMLRenderer]
@@ -211,6 +220,7 @@ class RecoveryBrassAuditPickTableView(APIView):
         print(f"[DEBUG] Master data loaded with {len(master_data)} entries.")
         print("All lot_ids in processed data:", [data['stock_lot_id'] for data in master_data])
         
+        master_data = _serialize_model_images(master_data)
         context = {
             'master_data': master_data,
             'page_obj': page_obj,
@@ -3182,7 +3192,8 @@ class RecoveryBrassAuditCompletedView(APIView):
             data['model_images'] = images
 
         print("Processed lot_ids:", [data['stock_lot_id'] for data in master_data])
-            
+        
+        master_data = _serialize_model_images(master_data)
         context = {
             'master_data': master_data,
             'page_obj': page_obj,

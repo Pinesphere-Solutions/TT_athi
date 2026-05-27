@@ -6,6 +6,7 @@ from django.db.models import OuterRef, Subquery, Exists, F
 from django.core.paginator import Paginator
 from django.templatetags.static import static
 import math
+from django.utils.safestring import mark_safe
 from Recovery_Brass_QC.models import *
 from Recovery_BrassAudit.models import *
 from Recovery_DP.models import *
@@ -28,6 +29,14 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import pytz
 from django.db.models import Sum
+
+def _serialize_model_images(master_data):
+    """Convert model_images lists to JSON strings for safe template rendering."""
+    for row in master_data:
+        if 'model_images' in row:
+            images = row['model_images']
+            row['model_images'] = mark_safe(json.dumps(images))
+    return master_data
 
 # Create your views here.
 
@@ -206,6 +215,7 @@ class RecoveryIQFPickTableView(APIView):
 
         print("Processed lot_ids:", [data['stock_lot_id'] for data in master_data])
 
+        master_data = _serialize_model_images(master_data)
         context = {
             'master_data': master_data,
             'page_obj': page_obj,
@@ -1703,6 +1713,7 @@ class RecoveryIQFCompletedTableView(APIView):
 
         print("Processed lot_ids:", [data['stock_lot_id'] for data in master_data])
 
+        master_data = _serialize_model_images(master_data)
         context = {
             'master_data': master_data,
             'page_obj': page_obj,

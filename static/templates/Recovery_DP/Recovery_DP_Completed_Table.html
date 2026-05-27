@@ -799,6 +799,7 @@ content %}
                 >
                   <span
                     class="model-hover-trigger"
+                    data-model-images='{{ row.model_images|safe }}'
                     style="cursor: pointer; word-break: break-all"
                   >
                     {{ row.plating_stk_no|highlight_plating_color|safe_html }}
@@ -856,17 +857,7 @@ content %}
                           width: 180px;
                         "
                       >
-                        {% for img_url in row.model_images %}
-                        <img
-                          src="{{ img_url }}"
-                          style="
-                            width: 55px;
-                            height: 55px;
-                            object-fit: cover;
-                            border-radius: 6px;
-                          "
-                        />
-                        {% endfor %}
+                        <!-- Images populated by JavaScript -->
                       </div>
                       <button
                         class="img-scroll-right"
@@ -2809,6 +2800,63 @@ content %}
         el.style.cursor = "not-allowed";
       });
   }
+</script>
+
+<!-- ✅ Dynamic Image Gallery Initialization -->
+<script nonce="{{ csp_nonce }}">
+  function initializeImageGalleries() {
+    document.querySelectorAll('.model-hover-trigger').forEach(function(trigger) {
+      const gallery = trigger.querySelector('.img-gallery');
+      const imagesAttr = trigger.getAttribute('data-model-images');
+      
+      // Skip if already initialized
+      if (!gallery || gallery.innerHTML.trim().length > 0) return;
+      
+      // Parse images from data attribute (proper JSON)
+      let images = [];
+      if (imagesAttr) {
+        try {
+          images = JSON.parse(imagesAttr);
+          if (!Array.isArray(images)) {
+            images = [];
+          }
+        } catch (e) {
+          console.warn('Failed to parse images:', imagesAttr, e);
+          images = [];
+        }
+      }
+      
+      // Default to placeholder if no images
+      if (!images || images.length === 0) {
+        images = ['/static/assets/images/imagePlaceholder.jpg'];
+      }
+      
+      console.log('🖼️ Initializing gallery for:', trigger.textContent.trim(), 'with', images.length, 'images (showing only first)');
+      
+      // ✅ POPULATE GALLERY WITH ONLY FIRST IMAGE (Single image display)
+      gallery.innerHTML = '';
+      if (images.length > 0) {
+        const img = document.createElement('img');
+        img.src = images[0]; // Only first image
+        img.alt = 'Product image';
+        img.style.cssText = 'width: 55px; height: 55px; object-fit: cover; border-radius: 6px; flex-shrink: 0;';
+        gallery.appendChild(img);
+      }
+    });
+  }
+  
+  // Initialize galleries on load
+  document.addEventListener("DOMContentLoaded", function() {
+    console.log('📄 Page loaded, initializing galleries...');
+    initializeImageGalleries();
+  });
+  
+  // Re-initialize galleries when hovering (in case they weren't initialized yet)
+  document.addEventListener('mouseenter', function(e) {
+    if (e.target.closest('.model-hover-trigger')) {
+      initializeImageGalleries();
+    }
+  }, true);
 </script>
 
 {% endblock %}

@@ -5,8 +5,10 @@ response payloads are byte-compatible with the previous implementation.
 """
 from __future__ import annotations
 
+import json
 import logging
 from django.core.paginator import Paginator
+from django.utils.safestring import mark_safe
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import TemplateHTMLRenderer
@@ -59,6 +61,15 @@ def _is_admin(user):
         return False
     return user.groups.filter(name="Admin").exists()
 
+def _serialize_model_images(master_data):
+    """Convert model_images lists to JSON strings for safe template rendering."""
+    for row in master_data:
+        if 'model_images' in row:
+            images = row['model_images']
+            # Convert list to JSON and mark safe for template
+            row['model_images'] = mark_safe(json.dumps(images))
+    return master_data
+
 def _empty_table_context(user):
     return {
         "master_data": [],
@@ -82,6 +93,7 @@ class IS_PickTable(APIView):
         page_obj = paginator.get_page(page_number)
         master_data = list(page_obj.object_list.values(*PICK_TABLE_COLUMNS))
         master_data = enrich_pick_table_rows(master_data)
+        master_data = _serialize_model_images(master_data)  # ✅ JSON serialize images
         context = {
             "master_data": master_data,
             "page_obj": page_obj,
@@ -105,8 +117,10 @@ class IS_AcceptTable(APIView):
         page_number = request.GET.get("page", 1)
         paginator = Paginator(rows, PAGE_SIZE)
         page_obj = paginator.get_page(page_number)
+        master_data = list(page_obj.object_list)
+        master_data = _serialize_model_images(master_data)  # ✅ JSON serialize images
         context = {
-            "master_data": list(page_obj.object_list),
+            "master_data": master_data,
             "page_obj": page_obj,
             "paginator": paginator,
             "user": request.user,
@@ -130,8 +144,10 @@ class IS_Completed_Table(APIView):
         page_number = request.GET.get("page", 1)
         paginator = Paginator(rows, PAGE_SIZE)
         page_obj = paginator.get_page(page_number)
+        master_data = list(page_obj.object_list)
+        master_data = _serialize_model_images(master_data)  # ✅ JSON serialize images
         context = {
-            "master_data": list(page_obj.object_list),
+            "master_data": master_data,
             "page_obj": page_obj,
             "paginator": paginator,
             "user": request.user,
@@ -155,8 +171,10 @@ class IS_RejectTable(APIView):
         page_number = request.GET.get("page", 1)
         paginator = Paginator(rows, PAGE_SIZE)
         page_obj = paginator.get_page(page_number)
+        master_data = list(page_obj.object_list)
+        master_data = _serialize_model_images(master_data)  # ✅ JSON serialize images
         context = {
-            "master_data": list(page_obj.object_list),
+            "master_data": master_data,
             "page_obj": page_obj,
             "paginator": paginator,
             "user": request.user,

@@ -729,7 +729,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                     </td>
                     <!-- Column 3: Plating Stk No -->
         <td {% if data.nq_hold_lot %} class="row-inactive-blur" {% endif %}>
-                      <span class="model-hover-trigger" style="cursor: pointer; word-break: break-all;">
+                      <span class="model-hover-trigger" data-model-images='{{ data.model_images|safe }}' style="cursor: pointer; word-break: break-all;">
                         {{ data.plating_stk_no|highlight_plating_color|safe_html }}
                         <div class="model-image-tooltip" style="position: absolute; left: 80%; top: 110%; transform: translateX(-50%); background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 18px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.2s; min-width: 220px;">
                           
@@ -747,7 +747,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                           <div style="display: flex; align-items: center; gap: 8px;">
                             <!-- Hide scroll buttons since only one image is shown -->
                             <div class="img-gallery" style="display: flex; gap: 6px; overflow: hidden; width: 180px;">
-                              <img src="{{ data.model_images.0|default:'/static/assets/images/imagePlaceholder.png' }}" style="width: 55px; height: 55px; object-fit: cover; border-radius: 6px;" />
+                              <!-- Images populated by JavaScript -->
                             </div>
                           </div>
                         </div>
@@ -2686,8 +2686,59 @@ document.addEventListener("DOMContentLoaded", function () {
           setTimeout(unlockParentActions, 200);
         });
       }
+      
+      // Initialize image galleries
+      initializeImageGalleries();
     });
   </script>
 
+  <!-- ===================================================================
+  NEW: Dynamic Image Gallery - Initialize on page load
+  ==================================================================== -->
+  <script>
+  function initializeImageGalleries() {
+    document.querySelectorAll('.model-hover-trigger').forEach(trigger => {
+      const imagesJson = trigger.getAttribute('data-model-images');
+      if (!imagesJson) return;
+      let images = [];
+      try {
+        images = JSON.parse(imagesJson);
+      } catch(e) { 
+        console.warn('[Gallery] Failed to parse images JSON:', imagesJson);
+        return; 
+      }
+      
+      const tooltip = trigger.querySelector('.model-image-tooltip');
+      if (!tooltip) return;
+      
+      const gallery = tooltip.querySelector('.img-gallery');
+      const closeBtn = tooltip.querySelector('.close-btn');
+      
+      if (!gallery || !closeBtn) return;
+      
+      // Populate gallery with image(s)
+      if (images.length === 0) {
+        gallery.innerHTML = '<img src="/static/assets/images/imagePlaceholder.jpg" style="width:180px;height:140px;object-fit:cover;border-radius:4px;" />';
+      } else {
+        gallery.innerHTML = images.slice(0,1).map(url => 
+          `<img src="${url}" style="width:180px;height:140px;object-fit:cover;border-radius:4px;" />`
+        ).join('');
+      }
+      
+      // Close button handler
+      closeBtn.onclick = () => tooltip.style.opacity = '0';
+      
+      // Show/hide on hover
+      trigger.addEventListener('mouseenter', () => {
+        tooltip.style.opacity = '1';
+        tooltip.style.pointerEvents = 'auto';
+      });
+      trigger.addEventListener('mouseleave', () => {
+        tooltip.style.opacity = '0';
+        tooltip.style.pointerEvents = 'none';
+      });
+    });
+  }
+  </script>
 
 {% endblock %} {% endblock content %}

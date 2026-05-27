@@ -1286,51 +1286,24 @@ document.addEventListener("DOMContentLoaded", function () {
         images = ['/static/assets/images/imagePlaceholder.jpg'];
       }
       
-      console.log('🖼️ Initializing gallery for:', trigger.textContent.trim(), 'with', images.length, 'images');
+      console.log('🖼️ Initializing gallery for:', trigger.textContent.trim(), 'with', images.length, 'images (showing only first)');
       
-      // Populate gallery with all images
+      // ✅ POPULATE GALLERY WITH ONLY FIRST IMAGE (Single image display)
       gallery.innerHTML = '';
-      images.forEach(function(imgUrl) {
+      if (images.length > 0) {
         const img = document.createElement('img');
-        img.src = imgUrl;
+        img.src = images[0]; // Only first image
         img.alt = 'Product image';
         img.style.cssText = 'width: 55px; height: 55px; object-fit: cover; border-radius: 6px; flex-shrink: 0;';
         gallery.appendChild(img);
-      });
+      }
       
-      // Store current index for scrolling
-      let currentIndex = 0;
+      // Hide scroll buttons since we only show one image
       const scrollLeft = trigger.querySelector('.img-scroll-left');
       const scrollRight = trigger.querySelector('.img-scroll-right');
+      if (scrollLeft) scrollLeft.style.display = 'none';
+      if (scrollRight) scrollRight.style.display = 'none';
       
-      // Update visible image
-      function updateGalleryView() {
-        const scrollAmount = currentIndex * 61; // 55px + 6px gap
-        gallery.style.transform = `translateX(-${scrollAmount}px)`;
-        gallery.style.transition = 'transform 0.3s ease';
-      }
-      
-      // Scroll left
-      if (scrollLeft) {
-        scrollLeft.addEventListener('click', function(e) {
-          e.stopPropagation();
-          if (currentIndex > 0) {
-            currentIndex--;
-            updateGalleryView();
-          }
-        });
-      }
-      
-      // Scroll right
-      if (scrollRight) {
-        scrollRight.addEventListener('click', function(e) {
-          e.stopPropagation();
-          if (currentIndex < images.length - 1) {
-            currentIndex++;
-            updateGalleryView();
-          }
-        });
-      }
     });
   }
   

@@ -19,6 +19,7 @@ import traceback
 from rest_framework import status
 from django.http import JsonResponse
 import json
+from django.utils.safestring import mark_safe
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.http import require_GET
 from django.db.models import Q
@@ -35,6 +36,25 @@ from django.views import View
 from django.db.models import Sum, F, Func, IntegerField
 from django.db import transaction
 from collections import OrderedDict
+
+
+def _serialize_model_images(rows_or_master_data):
+    """Convert model_images lists to JSON strings marked as safe for template rendering.
+    
+    Args:
+        rows_or_master_data: Either a list of dicts or a single dict containing model_images
+    
+    Returns:
+        The same data structure with model_images converted to JSON strings
+    """
+    if isinstance(rows_or_master_data, list):
+        for row in rows_or_master_data:
+            if 'model_images' in row and row['model_images']:
+                row['model_images'] = mark_safe(json.dumps(row['model_images']))
+    elif isinstance(rows_or_master_data, dict):
+        if 'model_images' in rows_or_master_data and rows_or_master_data['model_images']:
+            rows_or_master_data['model_images'] = mark_safe(json.dumps(rows_or_master_data['model_images']))
+    return rows_or_master_data
 
 
 # Generate Lot ID (microsecond-based with exists() retry loop)
@@ -559,6 +579,9 @@ class IQFPickTableView(APIView):
                 seen.add(lid)
                 unique_master.append(d)
         master_data = unique_master
+
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(master_data)
 
         context = {
             'master_data': master_data,
@@ -2123,6 +2146,9 @@ class IQFAcceptTablePageView(APIView):
                     'tray_qty_list': '',
                 })
 
+            # Serialize model_images to JSON for frontend gallery
+            _serialize_model_images(master_data)
+
             return Response({'master_data': master_data}, template_name=self.template_name)
         except Exception as e:
             print(f'[IQF ACCEPT TABLE ERROR] {e}')
@@ -2228,6 +2254,9 @@ class IQFRejectionTableView(APIView):
                     'original_lot_qty': int(sub.original_lot_qty or (sub.batch_id.total_batch_quantity if sub.batch_id and getattr(sub.batch_id, 'total_batch_quantity', None) else 0)),
                     'IQF_pick_remarks': pick_remarks_map.get(sub.lot_id) or '',
                 })
+
+            # Serialize model_images to JSON for frontend gallery
+            _serialize_model_images(master_data)
 
             # Pagination
             page_number = request.GET.get('page', 1)

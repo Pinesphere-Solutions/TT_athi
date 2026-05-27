@@ -1278,21 +1278,21 @@ body.add-model-mode #selectAllCheckbox {
 
                       <!-- Model Presents -->
                       <td class="model-stock-no-cell"
-                          data-images='{{ jig_detail.model_images|json_encode }}'
                           data-model-colors='{{ jig_detail.model_colors|json_encode }}'
                           data-model-list='{{ jig_detail.no_of_model_cases|json_encode }}'>
-                        <span class="model-stock-no-text" style="cursor:pointer; white-space: nowrap;">
-                          {% for model_no in jig_detail.no_of_model_cases %}
-                            {% if jig_detail.model_colors %}
-                              <span class="model-circle" title="{{ model_no }}" style="background:{{ jig_detail.model_colors|get_item:model_no }};{% if forloop.last %}margin-right:0;{% endif %}"></span>
-                            {% else %}
-                              <span class="model-circle" title="{{ model_no }}" style="background:#ccc;{% if forloop.last %}margin-right:0;{% endif %}"></span>
-                            {% endif %}
-                          {% empty %}
-                            <span style="color:#6c757d; font-style:italic; font-size:12px;">N/A</span>
-                          {% endfor %}
-                          {% if jig_detail.no_of_model_cases %}
-                            <span class="expand-model-remark" style="display:inline-block;width:18px;height:18px;vertical-align:middle;cursor:pointer;margin-left:6px;" title="Expand">
+                        <span class="model-hover-trigger" data-model-images='{{ jig_detail.model_images|safe }}' style="cursor:pointer; white-space: nowrap; display: inline-block;">
+                          <span class="model-stock-no-text" style="cursor:pointer; white-space: nowrap;">
+                            {% for model_no in jig_detail.no_of_model_cases %}
+                              {% if jig_detail.model_colors %}
+                                <span class="model-circle" title="{{ model_no }}" style="background:{{ jig_detail.model_colors|get_item:model_no }};{% if forloop.last %}margin-right:0;{% endif %}"></span>
+                              {% else %}
+                                <span class="model-circle" title="{{ model_no }}" style="background:#ccc;{% if forloop.last %}margin-right:0;{% endif %}"></span>
+                              {% endif %}
+                            {% empty %}
+                              <span style="color:#6c757d; font-style:italic; font-size:12px;">N/A</span>
+                            {% endfor %}
+                            {% if jig_detail.no_of_model_cases %}
+                              <span class="expand-model-remark" style="display:inline-block;width:18px;height:18px;vertical-align:middle;cursor:pointer;margin-left:6px;" title="Expand">
                               <svg width="18" height="18" viewBox="0 0 18 18">
                                 <circle cx="9" cy="9" r="8" fill="#bbb"/>
                                 <polygon points="6,7 12,7 9,12" fill="#fff"/>
@@ -1300,6 +1300,25 @@ body.add-model-mode #selectAllCheckbox {
                             </span>
                           {% endif %}
                         </span>
+                        <!-- Image tooltip for gallery -->
+                        <div class="model-image-tooltip" style="position: absolute; left: 80%; top: 110%; transform: translateX(-50%); background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 18px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.2s; min-width: 220px;">
+                          <!-- Header with Info and Close buttons -->
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <button class="info-btn" style="background: #007bff; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
+                               Info
+                            </button>
+                            <button class="close-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
+                               Close
+                            </button>
+                          </div>
+                          <!-- Image gallery section -->
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="img-gallery" style="display: flex; gap: 6px; overflow: hidden; width: 180px;">
+                              <!-- Images populated by JavaScript -->
+                            </div>
+                          </div>
+                        </div>
+                      </span>
                       </td>
                       
                       <!-- Action -->
@@ -2451,6 +2470,57 @@ function showJigUnloadModelImages(modelNo, imagesJson) {
       });
     }
   });
+  
+  // ===================================================================
+  // NEW: Dynamic Image Gallery - Initialize on page load
+  // ===================================================================
+  function initializeImageGalleries() {
+    document.querySelectorAll('.model-hover-trigger').forEach(trigger => {
+      const imagesJson = trigger.getAttribute('data-model-images');
+      if (!imagesJson) return;
+      let images = [];
+      try {
+        images = JSON.parse(imagesJson);
+      } catch(e) { 
+        console.warn('[Gallery] Failed to parse images JSON:', imagesJson);
+        return; 
+      }
+      
+      const tooltip = trigger.querySelector('.model-image-tooltip');
+      if (!tooltip) return;
+      
+      const gallery = tooltip.querySelector('.img-gallery');
+      const closeBtn = tooltip.querySelector('.close-btn');
+      
+      if (!gallery || !closeBtn) return;
+      
+      // Populate gallery with image(s)
+      if (images.length === 0) {
+        gallery.innerHTML = '<img src="/static/assets/images/imagePlaceholder.jpg" style="width:180px;height:140px;object-fit:cover;border-radius:4px;" />';
+      } else {
+        gallery.innerHTML = images.slice(0,1).map(url => 
+          `<img src="${url}" style="width:180px;height:140px;object-fit:cover;border-radius:4px;" />`
+        ).join('');
+      }
+      
+      // Close button handler
+      closeBtn.onclick = () => tooltip.style.opacity = '0';
+      
+      // Show/hide on hover
+      trigger.addEventListener('mouseenter', () => {
+        tooltip.style.opacity = '1';
+        tooltip.style.pointerEvents = 'auto';
+      });
+      trigger.addEventListener('mouseleave', () => {
+        tooltip.style.opacity = '0';
+        tooltip.style.pointerEvents = 'none';
+      });
+    });
+  }
+  
+  // Initialize on page load and delegate for new content
+  document.addEventListener('DOMContentLoaded', initializeImageGalleries);
+  document.addEventListener('mouseenter', initializeImageGalleries, true);
   </script>
 
 {% endblock %}

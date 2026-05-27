@@ -18,6 +18,7 @@ import traceback
 from rest_framework import status
 from django.http import JsonResponse
 import json
+from django.utils.safestring import mark_safe
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.http import require_GET
 from math import ceil
@@ -55,6 +56,26 @@ from .services.tray_service import (
 )
 from .services.lot_service import generate_lot_id
 from .services.submission_service import handle_submission
+
+
+def _serialize_model_images(rows_or_master_data):
+    """Convert model_images lists to JSON strings marked as safe for template rendering.
+    
+    Args:
+        rows_or_master_data: Either a list of dicts or a single dict containing model_images
+    
+    Returns:
+        The same data structure with model_images converted to JSON strings
+    """
+    if isinstance(rows_or_master_data, list):
+        for row in rows_or_master_data:
+            if 'model_images' in row and row['model_images']:
+                row['model_images'] = mark_safe(json.dumps(row['model_images']))
+    elif isinstance(rows_or_master_data, dict):
+        if 'model_images' in rows_or_master_data and rows_or_master_data['model_images']:
+            rows_or_master_data['model_images'] = mark_safe(json.dumps(rows_or_master_data['model_images']))
+    return rows_or_master_data
+
 
 # Brass QC Pick Table View
 @method_decorator(login_required, name='dispatch')
@@ -297,6 +318,9 @@ class BrassPickTableView(APIView):
             else:
                 data['lot_status'] = 'Yet to Start'
 
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(master_data)
+        
         context = {
             'master_data': master_data,
             'page_obj': page_obj,
@@ -544,6 +568,9 @@ class BrassCompletedView(APIView):
             else:
                 data['rejection_remarks_list'] = []
             
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(master_data)
+        
         context = {
             'master_data': master_data,
             'page_obj': page_obj,

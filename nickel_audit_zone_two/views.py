@@ -18,6 +18,7 @@ import logging
 from rest_framework import status
 from django.http import JsonResponse
 import json
+from django.utils.safestring import mark_safe
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.http import require_GET
 from math import ceil
@@ -37,6 +38,23 @@ from Nickel_Audit.views import _na_latest_submission_qtys, _na_unique_completed_
 logger = logging.getLogger(__name__)
 
 
+def _serialize_model_images(rows_or_master_data):
+    """Convert model_images lists to JSON strings marked as safe for template rendering.
+    
+    Args:
+        rows_or_master_data: Either a list of dicts or a single dict containing model_images
+    
+    Returns:
+        The same data structure with model_images converted to JSON strings
+    """
+    if isinstance(rows_or_master_data, list):
+        for row in rows_or_master_data:
+            if 'model_images' in row and row['model_images']:
+                row['model_images'] = mark_safe(json.dumps(row['model_images']))
+    elif isinstance(rows_or_master_data, dict):
+        if 'model_images' in rows_or_master_data and rows_or_master_data['model_images']:
+            rows_or_master_data['model_images'] = mark_safe(json.dumps(rows_or_master_data['model_images']))
+    return rows_or_master_data
 def _get_input_source(jig_unload_obj):
     """Return location names with fallback chain: M2M → TotalStockModel → TrayId → ModelMasterCreation."""
     names = [loc.location_name for loc in jig_unload_obj.location.all()]

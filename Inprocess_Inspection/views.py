@@ -5,6 +5,7 @@ from modelmasterapp.models import *
 from django.db.models import OuterRef, Subquery, Exists, F
 import math
 import json
+from django.utils.safestring import mark_safe
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
 from django.views.generic import TemplateView
@@ -20,6 +21,26 @@ import pytz
 from django.db.models import Q
 from .models import InprocessInspectionTrayCapacity
 from Jig_Loading.models import JigCompleted
+
+
+def _serialize_model_images(rows_or_master_data):
+    """Convert model_images lists to JSON strings marked as safe for template rendering.
+    
+    Args:
+        rows_or_master_data: Either a list of dicts or a single dict containing model_images
+    
+    Returns:
+        The same data structure with model_images converted to JSON strings
+    """
+    if isinstance(rows_or_master_data, list):
+        for row in rows_or_master_data:
+            if 'model_images' in row and row['model_images']:
+                row['model_images'] = mark_safe(json.dumps(row['model_images']))
+    elif isinstance(rows_or_master_data, dict):
+        if 'model_images' in rows_or_master_data and rows_or_master_data['model_images']:
+            rows_or_master_data['model_images'] = mark_safe(json.dumps(rows_or_master_data['model_images']))
+    return rows_or_master_data
+
 
 # Inprocess Inspection View
 class InprocessInspectionView(TemplateView):
@@ -292,6 +313,9 @@ class InprocessInspectionView(TemplateView):
         context['all_bath_numbers'] = BathNumbers.objects.filter(
             is_active=True
         ).order_by('bath_type', 'bath_number')
+        
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(processed_jig_details)
         
         return context
     
@@ -2064,6 +2088,8 @@ class InprocessInspectionCompleteView(TemplateView):
         context['from_date'] = from_date
         context['to_date'] = to_date
 
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(processed_jig_details)
         
         return context
     

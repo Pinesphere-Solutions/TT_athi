@@ -19,6 +19,7 @@ import logging
 from rest_framework import status
 from django.http import JsonResponse
 import json
+from django.utils.safestring import mark_safe
 logger = logging.getLogger(__name__)
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.http import require_GET
@@ -44,6 +45,25 @@ from Nickel_Inspection.services import (
 )
 from Inprocess_Inspection.models import InprocessInspectionTrayCapacity
 from django.contrib.auth.decorators import login_required
+
+
+def _serialize_model_images(rows_or_master_data):
+    """Convert model_images lists to JSON strings marked as safe for template rendering.
+    
+    Args:
+        rows_or_master_data: Either a list of dicts or a single dict containing model_images
+    
+    Returns:
+        The same data structure with model_images converted to JSON strings
+    """
+    if isinstance(rows_or_master_data, list):
+        for row in rows_or_master_data:
+            if 'model_images' in row and row['model_images']:
+                row['model_images'] = mark_safe(json.dumps(row['model_images']))
+    elif isinstance(rows_or_master_data, dict):
+        if 'model_images' in rows_or_master_data and rows_or_master_data['model_images']:
+            rows_or_master_data['model_images'] = mark_safe(json.dumps(rows_or_master_data['model_images']))
+    return rows_or_master_data
 
 def _nq_tray_capacity(tray_type_name):
     """Return accept-tray capacity for a given tray_type string.
@@ -483,6 +503,9 @@ class NQ_PickTableView(APIView):
             "All lot_ids in processed data:",
             [data["stock_lot_id"] for data in master_data],
         )
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(master_data)
+        
         context = {
             "master_data": master_data,
             "page_obj": page_obj,
@@ -682,6 +705,10 @@ class NickelQcRejectTableView(APIView):
             master_data.append(data)
         print("✅ Nickel QC Reject data processing completed")
         print("Processed lot_ids:", [data["stock_lot_id"] for data in master_data])
+        
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(master_data)
+        
         context = {
             "master_data": master_data,
             "page_obj": page_obj,
@@ -1434,6 +1461,9 @@ class NQCompletedView(APIView):
 
             master_data.append(data)
 
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(master_data)
+        
         context = {
             'master_data': master_data,
             'page_obj': page_obj,

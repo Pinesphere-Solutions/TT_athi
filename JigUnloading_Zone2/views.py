@@ -11,6 +11,7 @@ from django.core.paginator import Paginator
 import math
 import json
 import re
+from django.utils.safestring import mark_safe
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
 from django.views.generic import TemplateView
@@ -26,6 +27,26 @@ from Jig_Unloading.models import *
 from Recovery_DP.models import *
 from Inprocess_Inspection.models import InprocessInspectionTrayCapacity
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+
+def _serialize_model_images(rows_or_master_data):
+    """Convert model_images lists to JSON strings marked as safe for template rendering.
+    
+    Args:
+        rows_or_master_data: Either a list of dicts or a single dict containing model_images
+    
+    Returns:
+        The same data structure with model_images converted to JSON strings
+    """
+    if isinstance(rows_or_master_data, list):
+        for row in rows_or_master_data:
+            if 'model_images' in row and row['model_images']:
+                row['model_images'] = mark_safe(json.dumps(row['model_images']))
+    elif isinstance(rows_or_master_data, dict):
+        if 'model_images' in rows_or_master_data and rows_or_master_data['model_images']:
+            rows_or_master_data['model_images'] = mark_safe(json.dumps(rows_or_master_data['model_images']))
+    return rows_or_master_data
+
 
 class JU_Zone_MainTable(LoginRequiredMixin, TemplateView):
     template_name = "Jig_Unloading - Zone_two/Jig_Unloading_Main_zone_two.html"
@@ -1504,6 +1525,9 @@ class JU_Zone_MainTable(LoginRequiredMixin, TemplateView):
         print(f"\n📄 Jig Unloading Zone 2 Main - Pagination: Page {page_number}, Total items: {len(jig_unload)}")
         print(f"📄 Current page items: {len(page_obj.object_list)}")
         print(f"📄 Total pages: {paginator.num_pages}")
+        
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(jig_unload)
         
         context['jig_unload'] = page_obj  # For table data
         context['page_obj'] = page_obj    # For pagination controls (template uses this name)
@@ -4464,6 +4488,9 @@ class JU_Zone_Completedtable(LoginRequiredMixin, TemplateView):
         # 🔥 NEW: Add date filter context variables
         context['from_date'] = from_date
         context['to_date'] = to_date
+        
+        # Serialize model_images to JSON for frontend gallery
+        _serialize_model_images(table_data)
         
         return context
 
