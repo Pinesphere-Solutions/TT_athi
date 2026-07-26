@@ -21,28 +21,6 @@
 
 }
 
-.model-image-tooltip img,
-.model-image-tooltip .nickel-preview-img,
-.model-image-tooltip .model-preview-image {
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  outline: none !important;
-  filter: none !important;
-  object-fit: contain !important;
-  object-position: center !important;
-}
-
-.model-image-tooltip .image-container,
-.model-image-tooltip .preview-container,
-.model-image-tooltip .model-image-container {
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
 
   /* Core layout blocks */
   .content-wrapper,
@@ -681,63 +659,6 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
   min-width: 0;
   width: 100%;
 }
-
-/* Nickel Audit model preview: show the full IV image without cropping */
-.model-image-tooltip .image-container {
-  width: 210px !important;
-  height: 190px !important;
-  overflow: visible !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-.model-image-tooltip .nickel-preview-img,
-.model-image-tooltip .model-preview-image {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 210px !important;
-  max-height: 190px !important;
-  object-fit: contain !important;
-  object-position: center !important;
-  overflow: visible !important;
-  clip-path: none !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  outline: none !important;
-}
-
-#trayScanModal_DayPlanning .user-profile img {
-  width: 64px !important;
-  height: 64px !important;
-  object-fit: contain !important;
-  object-position: center !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-
-#nickelAuditModalModelImage {
-  display: block !important;
-  width: 72px !important;
-  height: 72px !important;
-  object-fit: contain !important;
-  object-position: center !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  outline: none !important;
-  clip-path: none !important;
-}
-
 </style>
 
 <div class="content-wrapper">
@@ -747,12 +668,12 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
       <div class="card">
         <div class="card-body" style="padding-bottom:12px;">
           <div class="mb-4" style="position: relative;">
-            <h5 class="text-left mt-0 mb-0 d-inline-block" style="font-weight:700;">Nickel Audit Pick Table - Zone I
-              <button type="button" class="btn btn-primary btn-sm ms-3" id="scanButton"
+            <h5 class="text-left mt-0 mb-0 d-inline-block" style="font-weight:700;">Nickel Audit Pick Table - Zone II
+              <!--<button type="button" class="btn btn-primary btn-sm ms-3" id="scanButton"
                       style="background-color: #028084; border-color: #028084; font-weight: 600; vertical-align: middle;">
                 <i class="fa fa-qrcode" style="margin-right: 6px;"></i>
                 Scan
-              </button>
+              </button> -->
               <span id="scanStatusMessage" style="display: none; margin-left: 12px; vertical-align: middle; color: #28a745; font-size: 15px; font-weight: 700;">PLEASE SCAN</span>
             </h5>
             <input type="text" id="scanHiddenInput" style="position: absolute; left: -9999px; opacity: 0;" autocomplete="off" />
@@ -839,7 +760,6 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
     data-batch-id="{{data.batch_id}}" 
     data-stock-lot-id="{{ data.stock_lot_id }}"
     data-model-no="{{ data.plating_stk_no }}"
-                         data-plating-stk-no="{{ data.plating_stk_no }}"
     data-available-qty="{{ data.available_qty }}" 
     data-brass-onhold-picking="{{ data.na_onhold_picking }}"
     data-brass-batch-rejection="{{ data.na_qc_rejection|yesno:'True,False' }}"
@@ -868,21 +788,19 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                           {% endif %}
                         </label>
                         <!-- Hold remark icon -->
-                        <span class="hold-remark-icon"
-                              style="display:{% if data.na_hold_lot or data.na_release_lot or data.na_holding_reason or data.na_release_reason %}inline-block{% else %}none{% endif %}; cursor:pointer;"
-                              data-bs-toggle="tooltip" data-placement="right"
-                              data-bs-original-title="{% if data.na_holding_reason %}Holding Reason: {{ data.na_holding_reason }} (by {{ data.na_hold_by }} on {{ data.na_hold_at }}){% endif %}{% if data.na_holding_reason and data.na_release_reason %}&#10;{% endif %}{% if data.na_release_reason %}Release Reason: {{ data.na_release_reason }} (by {{ data.na_release_by }} on {{ data.na_release_at }}){% endif %}">
-                          {% if data.na_hold_lot or data.na_release_lot or data.na_holding_reason or data.na_release_reason %}
+                        <span class="hold-remark-icon" 
+                              style="display:{% if data.na_hold_lot or data.na_release_lot or data.na_holding_reason or data.brass_audit_release_reason %}inline-block{% else %}none{% endif %}; cursor:pointer;" 
+                              title="{% if data.na_holding_reason %}Holding Reason: {{ data.na_holding_reason }}{% endif %}{% if data.na_holding_reason and data.brass_audit_release_reason %}&#10;{% endif %}{% if data.brass_audit_release_reason %}Release Reason: {{ data.brass_audit_release_reason }}{% endif %}">
+                          {% if data.na_hold_lot or data.na_release_lot or data.na_holding_reason or data.brass_audit_release_reason %}
                             <img src="{% static 'assets/icons/view2.png' %}" alt="Remark" style="width:12px; height:12px;" />
                           {% endif %}
                         </span>
                       {% else %}
                         <!-- Non-admin: Only show view icon if there's a holding/release reason -->
-                        {% if data.na_hold_lot or data.na_release_lot or data.na_holding_reason or data.na_release_reason %}
-                          <span class="hold-remark-icon"
-                                style="display:inline-block; cursor:pointer;"
-                                data-bs-toggle="tooltip" data-placement="right"
-                                data-bs-original-title="{% if data.na_holding_reason %}Holding Reason: {{ data.na_holding_reason }} (by {{ data.na_hold_by }} on {{ data.na_hold_at }}){% endif %}{% if data.na_holding_reason and data.na_release_reason %}&#10;{% endif %}{% if data.na_release_reason %}Release Reason: {{ data.na_release_reason }} (by {{ data.na_release_by }} on {{ data.na_release_at }}){% endif %}">
+                        {% if data.na_hold_lot or data.na_release_lot or data.na_holding_reason or data.brass_audit_release_reason %}
+                          <span class="hold-remark-icon" 
+                                style="display:inline-block; cursor:pointer;" 
+                                title="{% if data.na_holding_reason %}Holding Reason: {{ data.na_holding_reason }}{% endif %}{% if data.na_holding_reason and data.brass_audit_release_reason %}&#10;{% endif %}{% if data.brass_audit_release_reason %}Release Reason: {{ data.brass_audit_release_reason }}{% endif %}">
                             <img src="{% static 'assets/icons/view2.png' %}" alt="View Reason" style="width:18px; height:18px;" />
                           </span>
                         {% endif %}
@@ -907,17 +825,19 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                           
                           <!-- Header with Info and Close buttons -->
                           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <button class="info-btn" style="background: #007bff; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
+                            <button type="button" class="info-btn" style="background: #007bff; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
                                Info
                             </button>
-                            <button class="close-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
+                            <button type="button" class="close-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
                                Close
                             </button>
                           </div>
                           <!-- Image gallery section -->
                           <div style="display: flex; align-items: center; gap: 8px;">
                             <!-- Hide scroll buttons since only one image is shown -->
-                            <div class="img-gallery" style="display: flex; gap: 6px; overflow: hidden; width: 180px;"></div>
+                            <div class="img-gallery" style="display: flex; gap: 6px; overflow: hidden; width: 180px; justify-content: center; align-items: center;">
+                              <span class="model-preview-loading" style="font-size:12px;color:#777;text-align:center;">Loading...</span>
+                            </div>
                           </div>
                         </div>
                       </span>
@@ -1058,7 +978,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                     <td {% if data.na_hold_lot %} class="row-inactive-blur" {% endif %}>{% include 'partials/_type_of_input_cell.html' with type_of_input=data.type_of_input %}</td>
                     <!-- Remarks -->
                     <td {% if data.na_hold_lot %} class="row-inactive-blur" {% endif %}>
-                      <a href="#" title="{% if data.na_pick_remarks %}{% else %}Add Remark{% endif %}" class="remark-tooltip-trigger"
+                      <a href="#" title="Add Remark" class="remark-tooltip-trigger"
                         style="display: inline-flex; align-items: center; height: 20px; margin-left: 5px; position: relative; cursor: pointer;">
                         <img src="{% static 'assets/icons/chat_icon.png' %}" alt="Chat"
                           style="width: 20px; height: 20px; {% if data.na_pick_remarks %}filter: grayscale(0) brightness(1.1) sepia(1) hue-rotate(80deg) saturate(3) contrast(1.2); opacity: 1;{% endif %}" />
@@ -1084,9 +1004,6 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                          style="margin-left: 5px; color: #007bff; font-size: 16px; display: inline-flex; align-items: center;">
                         <i class="fa fa-info-circle"></i>
                       </a>
-                      <a href="#" class="remark-history-btn" data-lot-id="{{ data.stock_lot_id }}" title="View full remark history" style="margin-left: 5px; color: #6c757d; font-size: 15px; display: inline-flex; align-items: center;">
-                        <i class="fa fa-history"></i>
-                      </a>
                     </td>
                     <!-- Version (hidden) -->
                     <td {% if data.na_hold_lot %} class="row-inactive-blur" {% endif %} style="display:none">{{data.version__version_name}}</td>
@@ -1101,7 +1018,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                   <!-- Header -->
                   <div style="padding:18px 24px 12px; border-bottom:1px solid #e8edf2;">
                     <span id="nickelAuditRejectModalClose" style="position:absolute; top:10px; right:18px; font-size:22px; font-weight:bold; color:#d9534f; cursor:pointer;">&times;</span>
-                    <h5 style="margin:0 0 8px; color:#028084; font-weight:700;">Nickel Audit Zone I - Rejection Window</h5>
+                    <h5 style="margin:0 0 8px; color:#028084; font-weight:700;">Nickel Audit Zone II - Rejection Window</h5>
                     <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:13px;">
                       <span>Plating Stk No: <strong id="naRejectModalPlatingStk" style="color:#028084;"></strong></span>
                       <span>Total Lot Qty: <strong id="naRejectModalTotalQty" style="color:#e67e22;"></strong></span>
@@ -1182,7 +1099,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
     
     <div class="modal-top-header" style="display: flex; align-items: center; gap: 20px; padding-bottom: 10px;">
       <div class="user-profile" style="display: flex; align-items: center; gap: 8px">
-        <img id="nickelAuditModalModelImage" src="/static/assets/images/imagePlaceholder.png" alt="Model preview" style="border:none; border-radius:0; box-shadow:none; background:transparent; width:72px; height:72px; object-fit:contain; object-position:center;" />
+        <img id="modalUserImg_DayPlanning" src="/static/assets/images/imagePlaceholder.png" alt="Model Image" style="border-radius: 50%; width: 50px; height: 50px; object-fit: contain; object-position: center;" />
         <!-- Model No and Lot Qty in same line -->
         <div style="display: flex; flex-direction: column; gap: 2px;">
           <div style="display: flex; align-items: center; gap: 15px;">
@@ -1409,7 +1326,8 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
   </div>
 </div>
 </div>
-{% block script %}
+       
+  {% block script %}
 
 
 <!-- Active table row highlight -->
@@ -1459,51 +1377,48 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch (e) {}
   }
 
-  function highlightRow(row) {
-    if (!row || !row.parentNode) return;
-    restoreRowPosition();
-    var tbody = row.parentNode;
-    movedRow = row;
-    if (tbody.firstElementChild !== row) {
-      originalRowIndex = Array.from(tbody.children).indexOf(row);
-      placeholderRow = document.createElement('tr');
-      placeholderRow.style.display = 'none';
-      for (var i = 0; i < row.children.length; i += 1) {
-        placeholderRow.appendChild(document.createElement('td'));
+  document.querySelectorAll('.tray-scan-btn-Jig').forEach(function(link) {
+    link.addEventListener('click', function(event) {
+      // Remove highlight from all rows
+      document.querySelectorAll('tbody tr').forEach(function(row) {
+        row.classList.remove('dp-row-action-highlight');
+      });
+      // Move the clicked row to the top and highlight
+      var row = event.target.closest('tr');
+      if (row && row.parentNode) {
+        const tbody = row.parentNode;
+        // Only move if not already at top
+        if (tbody.firstElementChild !== row) {
+          // If a previous move exists, restore it first
+          if (movedRow && placeholderRow && placeholderRow.parentNode) {
+            placeholderRow.parentNode.insertBefore(movedRow, placeholderRow);
+            placeholderRow.parentNode.removeChild(placeholderRow);
+            movedRow.classList.remove('dp-row-action-highlight');
+            movedRow = null;
+            placeholderRow = null;
+            originalRowIndex = null;
+          }
+          // Store original index and row
+          originalRowIndex = Array.from(tbody.children).indexOf(row);
+          movedRow = row;
+          // Insert a placeholder at the original position
+          placeholderRow = document.createElement('tr');
+          placeholderRow.style.display = 'none';
+          tbody.insertBefore(placeholderRow, tbody.children[originalRowIndex]);
+          // Move row to top
+          tbody.insertBefore(row, tbody.firstElementChild);
+        }
+        row.classList.add('dp-row-action-highlight');
       }
-      tbody.insertBefore(placeholderRow, row);
-      tbody.insertBefore(row, tbody.firstElementChild);
-    }
-    row.classList.add('dp-row-action-highlight');
-  }
-
-  function actionTarget(target) {
-    return target.closest(
-      '.hold-toggle-btn, .hold-remark-icon, .tray-scan-btn, .tray-scan-btn-Jig, .tray-scan-btn-BQ-view, .btn-accept-is:not(:disabled), .btn-reject-is:not(:disabled), .delete-batch-btn, .remark-send-btn, .rejection-popup-trigger, #delink-selected-btn'
-    );
-  }
-
-  document.addEventListener('click', function(event) {
-    if (event.target.closest('.model-hover-trigger') || event.target.closest('.model-image-tooltip')) return;
-    var action = actionTarget(event.target);
-    if (!action) return;
-    highlightRow(action.closest('tr'));
-  }, true);
-
-  document.addEventListener('change', function(event) {
-    if (event.target.matches('.hold-toggle-btn')) {
-      highlightRow(event.target.closest('tr'));
-    }
-  }, true);
+    });
+  });
 
   // Handle multiple modal close buttons
   const closeButtons = [
     'closeTrayScanModal_DayPlanning',
     'closeTrayScanModal', 
     'closeNewPopupModal',
-    'closetrayScanModal_Jig',
-    'closeHoldRemarkModal',
-    'closeRejectionPopup'
+    'closetrayScanModal_Jig'
   ];
 
   closeButtons.forEach(function(buttonId) {
@@ -1517,9 +1432,7 @@ document.addEventListener("DOMContentLoaded", function() {
   const modals = [
     'trayScanModal_DayPlanning',
     'trayScanModal',
-    'newPopupModal',
-    'holdRemarkModal',
-    'rejectionPopupModal'
+    'newPopupModal'
   ];
 
   modals.forEach(function(modalId) {
@@ -1534,18 +1447,6 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   // Handle ESC key to restore position
-  document.addEventListener('click', function(event) {
-    if (
-      event.target &&
-      (event.target.classList.contains('swal2-cancel') ||
-       event.target.classList.contains('swal2-close') ||
-       event.target.id === 'cancelButton' ||
-       event.target.id === 'naRejectCancelBtn')
-    ) {
-      restoreRowPosition();
-    }
-  });
-
   document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
       restoreRowPosition();
@@ -1559,7 +1460,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <script nonce="{{ csp_nonce }}">
 (function () {
   'use strict';
-  var API_BASE = '/nickel_audit/api/';
+  var API_BASE = '/nickel_audit_zone_two/api/';
   var csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
   function post(url, body) {
     return fetch(url, {
@@ -1568,6 +1469,311 @@ document.addEventListener("DOMContentLoaded", function() {
       body: JSON.stringify(body),
     }).then(function (r) { return r.json(); });
   }
+
+  var naZone2PreviewCache = new Map();
+  var naZone2PreviewRequestCache = new Map();
+  var naZone2ActivePreviewTrigger = null;
+  var naZone2ActivePreviewRow = null;
+  var naZone2TriggerHovered = false;
+  var naZone2PopupHovered = false;
+  var naZone2RowActive = false;
+  var naZone2PreviewHideTimer = null;
+  var NA_ZONE2_PREVIEW_HIDE_DELAY_MS = 220;
+
+  function normalizeNaZone2ImageUrl(rawUrl) {
+    var value = String(rawUrl || '').trim();
+    if (!value) return '';
+    try {
+      var parsed = new URL(value, window.location.origin);
+      var hostname = String(parsed.hostname || '').toLowerCase();
+      var isLoopbackHost =
+        hostname === '127.0.0.1' ||
+        hostname === 'localhost' ||
+        hostname === '::1' ||
+        hostname === '[::1]';
+      var isApplicationAsset =
+        parsed.pathname.indexOf('/media/') === 0 ||
+        parsed.pathname.indexOf('/static/') === 0;
+      if (parsed.origin === window.location.origin || (isLoopbackHost && isApplicationAsset)) {
+        return parsed.pathname + parsed.search + parsed.hash;
+      }
+      return parsed.href;
+    } catch (error) {
+      return value;
+    }
+  }
+
+  function getNaZone2ImageUrlFromEntry(entry) {
+    if (!entry) return '';
+    if (typeof entry === 'string') return normalizeNaZone2ImageUrl(entry);
+    return normalizeNaZone2ImageUrl(entry.preview_image || entry.url || entry.image_url || entry.src || entry.image || '');
+  }
+
+  function resolveNaZone2PreviewImage(payload) {
+    var previewImage = normalizeNaZone2ImageUrl(payload && payload.preview_image);
+    if (previewImage) return previewImage;
+
+    var images = Array.isArray(payload && payload.images) ? payload.images : [];
+    var insideView = images.find(function (image) {
+      return String(image && image.view_code || '').toUpperCase() === 'IV';
+    });
+    var insideViewUrl = getNaZone2ImageUrlFromEntry(insideView);
+    if (insideViewUrl) return insideViewUrl;
+
+    var noImage = images.find(function (image) {
+      var viewCode = String(image && image.view_code || '').toUpperCase();
+      return viewCode === 'NO_IMAGE' || image && image.is_placeholder === true;
+    });
+    return getNaZone2ImageUrlFromEntry(noImage);
+  }
+
+  function fetchNaZone2Preview(stockNo) {
+    var cacheKey = String(stockNo || '').trim().toUpperCase();
+    if (!cacheKey) return Promise.resolve(null);
+    if (naZone2PreviewCache.has(cacheKey)) {
+      return Promise.resolve(naZone2PreviewCache.get(cacheKey));
+    }
+    if (naZone2PreviewRequestCache.has(cacheKey)) {
+      return naZone2PreviewRequestCache.get(cacheKey);
+    }
+
+    var request = fetch('/adminportal/api/model-hover-preview/?stock_no=' + encodeURIComponent(stockNo) + '&_ts=' + Date.now(), {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.json();
+      })
+      .then(function (payload) {
+        naZone2PreviewCache.set(cacheKey, payload);
+        return payload;
+      })
+      .finally(function () {
+        naZone2PreviewRequestCache.delete(cacheKey);
+      });
+
+    naZone2PreviewRequestCache.set(cacheKey, request);
+    return request;
+  }
+
+  function renderNaZone2TooltipPreview(trigger) {
+    var tooltip = trigger ? trigger.querySelector('.model-image-tooltip') : null;
+    var gallery = tooltip ? tooltip.querySelector('.img-gallery') : null;
+    var stockNo = trigger && trigger.dataset ? trigger.dataset.platingStkNo : '';
+    if (!gallery) return;
+
+    gallery.innerHTML = '<span class="model-preview-loading" style="font-size:12px;color:#777;text-align:center;">Loading...</span>';
+    fetchNaZone2Preview(stockNo)
+      .then(function (payload) {
+        var imageUrl = resolveNaZone2PreviewImage(payload);
+        if (!imageUrl) {
+          gallery.innerHTML = '<span style="font-size:12px;color:#777;text-align:center;">Image unavailable</span>';
+          return;
+        }
+        gallery.innerHTML = '';
+        var image = document.createElement('img');
+        image.alt = payload && (payload.is_placeholder || payload.is_fallback) ? 'No image available' : 'Model IV preview';
+        image.style.cssText = 'width:120px;height:120px;object-fit:contain;object-position:center;border-radius:6px;';
+        image.onerror = function () {
+          gallery.innerHTML = '<span style="font-size:12px;color:#777;text-align:center;">Image could not be loaded</span>';
+        };
+        gallery.appendChild(image);
+        image.src = imageUrl;
+      })
+      .catch(function () {
+        gallery.innerHTML = '<span style="font-size:12px;color:#777;text-align:center;">Image unavailable</span>';
+      });
+  }
+
+  function cancelNaZone2PreviewClose() {
+    clearTimeout(naZone2PreviewHideTimer);
+    naZone2PreviewHideTimer = null;
+  }
+
+  function closeNaZone2Preview() {
+    var trigger = naZone2ActivePreviewTrigger;
+    var tooltip = trigger ? trigger.querySelector('.model-image-tooltip') : null;
+    if (!tooltip) return;
+    tooltip.classList.remove('pinned');
+    tooltip.style.opacity = '0';
+    tooltip.style.visibility = 'hidden';
+    tooltip.style.pointerEvents = 'none';
+    tooltip.style.display = 'none';
+    trigger.style.backgroundColor = '';
+    trigger.style.borderRadius = '';
+    naZone2ActivePreviewTrigger = null;
+    naZone2ActivePreviewRow = null;
+    naZone2TriggerHovered = false;
+    naZone2PopupHovered = false;
+    naZone2RowActive = false;
+  }
+
+  function isMovingWithinNaZone2Hover(event, trigger, tooltip) {
+    var nextTarget = event.relatedTarget;
+    var row = trigger ? trigger.closest('tr') : naZone2ActivePreviewRow;
+
+    return !!(
+      nextTarget &&
+      (
+        (trigger && trigger.contains(nextTarget)) ||
+        (tooltip && tooltip.contains(nextTarget)) ||
+        (row && row.contains(nextTarget))
+      )
+    );
+  }
+
+  function scheduleNaZone2PreviewClose(trigger, tooltip) {
+    cancelNaZone2PreviewClose();
+    naZone2PreviewHideTimer = setTimeout(function () {
+      var currentTrigger = trigger || naZone2ActivePreviewTrigger;
+      var currentTooltip = tooltip || (currentTrigger ? currentTrigger.querySelector('.model-image-tooltip') : null);
+      var currentRow = currentTrigger ? currentTrigger.closest('tr') : naZone2ActivePreviewRow;
+      var rowHovered = currentRow && currentRow.matches(':hover');
+      var triggerHovered = currentTrigger && currentTrigger.matches(':hover');
+      var popupHovered = currentTooltip && currentTooltip.matches(':hover');
+
+      if (
+        !naZone2TriggerHovered &&
+        !naZone2PopupHovered &&
+        !naZone2RowActive &&
+        !rowHovered &&
+        !triggerHovered &&
+        !popupHovered
+      ) {
+        closeNaZone2Preview();
+      }
+    }, NA_ZONE2_PREVIEW_HIDE_DELAY_MS);
+  }
+
+  function markNaZone2RowActive(trigger) {
+    naZone2ActivePreviewTrigger = trigger;
+    naZone2ActivePreviewRow = trigger ? trigger.closest('tr') : null;
+    naZone2RowActive = !!(naZone2ActivePreviewRow && naZone2ActivePreviewRow.matches(':hover'));
+    cancelNaZone2PreviewClose();
+  }
+
+  function bindNaZone2ModelImageTooltips() {
+    document.querySelectorAll('.model-hover-trigger[data-plating-stk-no]').forEach(function (trigger) {
+      if (trigger.dataset.naZone2PreviewBound === '1') return;
+      trigger.dataset.naZone2PreviewBound = '1';
+      var tooltip = trigger.querySelector('.model-image-tooltip');
+      if (!tooltip) return;
+
+      function openTooltip() {
+        if (naZone2ActivePreviewTrigger && naZone2ActivePreviewTrigger !== trigger) {
+          closeNaZone2Preview();
+        }
+        cancelNaZone2PreviewClose();
+        naZone2ActivePreviewTrigger = trigger;
+        naZone2ActivePreviewRow = trigger.closest('tr');
+        naZone2TriggerHovered = trigger.matches(':hover');
+        naZone2PopupHovered = tooltip.matches(':hover');
+        tooltip.style.display = 'flex';
+        tooltip.style.opacity = '1';
+        tooltip.style.visibility = 'visible';
+        tooltip.style.pointerEvents = 'auto';
+        renderNaZone2TooltipPreview(trigger);
+      }
+
+      trigger.addEventListener('mouseenter', function () {
+        naZone2TriggerHovered = true;
+        cancelNaZone2PreviewClose();
+        openTooltip();
+      });
+      trigger.addEventListener('mouseleave', function (event) {
+        naZone2TriggerHovered = false;
+        if (isMovingWithinNaZone2Hover(event, trigger, tooltip)) return;
+        scheduleNaZone2PreviewClose(trigger, tooltip);
+      });
+      tooltip.addEventListener('mouseenter', function () {
+        naZone2PopupHovered = true;
+        cancelNaZone2PreviewClose();
+      });
+      tooltip.addEventListener('mouseleave', function (event) {
+        naZone2PopupHovered = false;
+        if (isMovingWithinNaZone2Hover(event, trigger, tooltip)) return;
+        scheduleNaZone2PreviewClose(trigger, tooltip);
+      });
+
+      var row = trigger.closest('tr');
+      if (row && row.dataset.naZone2PreviewRowBound !== '1') {
+        row.dataset.naZone2PreviewRowBound = '1';
+        row.addEventListener('mouseenter', function () {
+          if (naZone2ActivePreviewRow === row) {
+            naZone2RowActive = true;
+            cancelNaZone2PreviewClose();
+          }
+        });
+        row.addEventListener('mouseleave', function (event) {
+          if (naZone2ActivePreviewRow !== row) return;
+          if (isMovingWithinNaZone2Hover(event, naZone2ActivePreviewTrigger, naZone2ActivePreviewTrigger ? naZone2ActivePreviewTrigger.querySelector('.model-image-tooltip') : null)) return;
+          naZone2RowActive = false;
+          scheduleNaZone2PreviewClose();
+        });
+      }
+
+      trigger.addEventListener('click', function (event) {
+        if (event.target.closest('.info-btn')) {
+          event.preventDefault();
+          event.stopPropagation();
+          var stockNo = trigger.dataset.platingStkNo || '';
+          var cached = naZone2PreviewCache.get(String(stockNo || '').trim().toUpperCase());
+          window.location.href = cached && cached.visual_aid_url
+            ? cached.visual_aid_url
+            : '/adminportal/dp_visualaid/?plating_stk_no=' + encodeURIComponent(stockNo);
+          return;
+        }
+        if (event.target.closest('.close-btn')) {
+          event.preventDefault();
+          event.stopPropagation();
+          closeNaZone2Preview();
+          return;
+        }
+        markNaZone2RowActive(trigger);
+        openTooltip();
+      });
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    var infoButton = event.target.closest('.model-image-tooltip .info-btn');
+    if (!infoButton) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    var trigger = infoButton.closest('.model-hover-trigger');
+    var stockNo = trigger && trigger.dataset ? trigger.dataset.platingStkNo || '' : '';
+    if (!stockNo) return;
+    var cached = naZone2PreviewCache.get(String(stockNo || '').trim().toUpperCase());
+    window.location.href = cached && cached.visual_aid_url
+      ? cached.visual_aid_url
+      : '/adminportal/dp_visualaid/?plating_stk_no=' + encodeURIComponent(stockNo);
+  }, true);
+
+  document.addEventListener('click', function (event) {
+    if (!naZone2ActivePreviewTrigger) return;
+    var clickedInsideTrigger = event.target.closest('.model-hover-trigger');
+    var clickedInsidePopup = event.target.closest('.model-image-tooltip');
+    var clickedInsideActiveRow = naZone2ActivePreviewRow && naZone2ActivePreviewRow.contains(event.target);
+
+    if (clickedInsideTrigger || clickedInsidePopup || clickedInsideActiveRow) {
+      if (clickedInsideActiveRow) {
+        naZone2RowActive = !!(naZone2ActivePreviewRow && naZone2ActivePreviewRow.matches(':hover'));
+        cancelNaZone2PreviewClose();
+      }
+      return;
+    }
+
+    closeNaZone2Preview();
+  });
 
   function showRemarkSavedModal() {
     if (window.Swal && typeof Swal.fire === 'function') {
@@ -1592,8 +1798,8 @@ document.addEventListener("DOMContentLoaded", function() {
     tooltip.style.display = 'none';
   }
 
-  if (!window.__naZone1RemarkHandlerBound) {
-    window.__naZone1RemarkHandlerBound = true;
+  if (!window.__naZone2RemarkHandlerBound) {
+    window.__naZone2RemarkHandlerBound = true;
     document.addEventListener('click', function (event) {
       var sendBtn = event.target.closest('.remark-send-btn');
       if (!sendBtn) return;
@@ -1726,11 +1932,52 @@ document.addEventListener("DOMContentLoaded", function() {
       if (e.target === viewModal) closeViewModal();
     });
 
+    bindNaZone2ModelImageTooltips();
+
+    var modalImgEl = document.getElementById('modalUserImg_DayPlanning');
+    var modalImgDefaultSrc = modalImgEl ? modalImgEl.getAttribute('src') : '';
+
+    function resetModalModelImage() {
+      if (!modalImgEl) return;
+      modalImgEl.onerror = null;
+      modalImgEl.src = modalImgDefaultSrc;
+      modalImgEl.alt = 'Model Image';
+    }
+
+    function renderModalModelImage(stockNo) {
+      if (!modalImgEl) return;
+      if (!stockNo) {
+        resetModalModelImage();
+        return;
+      }
+
+      fetchNaZone2Preview(stockNo)
+        .then(function (payload) {
+          var imageUrl = resolveNaZone2PreviewImage(payload);
+          if (!imageUrl) {
+            resetModalModelImage();
+            return;
+          }
+          modalImgEl.onerror = function () {
+            modalImgEl.onerror = null;
+            resetModalModelImage();
+          };
+          modalImgEl.alt = payload && (payload.is_placeholder || payload.is_fallback)
+            ? 'No image available'
+            : 'Model IV preview';
+          modalImgEl.src = imageUrl;
+        })
+        .catch(function () {
+          resetModalModelImage();
+        });
+    }
+
     document.querySelectorAll('.tray-scan-btn-BQ-view').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         var lotId = btn.dataset.stockLotId || '';
         var modelNo = btn.dataset.modelNo || '';
+        var stockNo = btn.dataset.platingStkNo || '';
         var totalQty = btn.dataset.totalBatchQuantity || '0';
         var missingQty = btn.dataset.brassMissingQty || '0';
         var physQty = (parseInt(totalQty, 10) || 0) - (parseInt(missingQty, 10) || 0);
@@ -1739,52 +1986,15 @@ document.addEventListener("DOMContentLoaded", function() {
         var elLotQty = document.getElementById('modalLotQty');
         var elMisQty = document.getElementById('modalMissingQty');
         var elPhysQty = document.getElementById('modalPhysicalQty');
-        var elModelImage = document.getElementById('nickelAuditModalModelImage');
-        var platingStockNo = (btn.dataset.platingStkNo || modelNo || '').trim();
         if (elModel) elModel.textContent = modelNo || lotId;
         if (elLotQty) elLotQty.textContent = totalQty;
         if (elMisQty) elMisQty.textContent = missingQty;
         if (elPhysQty) elPhysQty.textContent = physQty;
 
+        resetModalModelImage();
+        renderModalModelImage(stockNo);
+
         if (viewDetails) viewDetails.innerHTML = '<span style="color:#888;font-size:13px;">Loading tray data...</span>';
-
-        // Load the IV-first model preview for the eye-icon modal.
-        // The shared API returns preview_image using IV → TV → FV → RSV → NO_IMAGE priority.
-        if (elModelImage) {
-          elModelImage.removeAttribute('src');
-          elModelImage.alt = 'Loading model preview';
-        }
-
-        if (platingStockNo && elModelImage) {
-          fetch('/adminportal/api/model-hover-preview/?stock_no=' + encodeURIComponent(platingStockNo), {
-            headers: {
-              'Accept': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          })
-            .then(function(response) {
-              if (!response.ok) throw new Error('Preview request failed');
-              return response.json();
-            })
-            .then(function(payload) {
-              if (payload && payload.preview_image) {
-                elModelImage.src = payload.preview_image;
-                elModelImage.alt = 'IV model preview';
-              } else {
-                elModelImage.src = '/static/assets/images/imagePlaceholder.png';
-                elModelImage.alt = 'Model preview unavailable';
-              }
-            })
-            .catch(function(error) {
-              console.error('[NickelAudit] Model preview error:', error);
-              elModelImage.src = '/static/assets/images/imagePlaceholder.png';
-              elModelImage.alt = 'Model preview unavailable';
-            });
-        } else if (elModelImage) {
-          elModelImage.src = '/static/assets/images/imagePlaceholder.png';
-          elModelImage.alt = 'Model preview unavailable';
-        }
-
         if (viewModal) viewModal.classList.add('open');
 
         if (!lotId) {
@@ -2600,7 +2810,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('globalScan:success', function (event) {
     var detail = (event && event.detail) || {};
     var moduleName = normalizeModule(detail.module);
-    if (moduleName !== 'nickel audit' && moduleName !== 'nickel audit z1' && moduleName !== 'nickel audit zone 1') return;
+    if (moduleName !== 'nickel audit' && moduleName !== 'nickel audit z2' && moduleName !== 'nickel audit zone 2') return;
 
     window.setTimeout(function () {
       var row = document.querySelector('#order-listing tbody tr[data-global-scan-active="1"]') ||
@@ -2616,306 +2826,12 @@ document.addEventListener('DOMContentLoaded', function () {
         detail: {
           tray_id: detail.tray_id || '',
           lot_id: row.getAttribute('data-stock-lot-id') || detail.lot_id || '',
-          zone: 'Z1',
+          zone: 'Z2',
           triggered_by: 'global_scan'
         }
       }));
     }, 300);
   });
-});
-</script>
-
-<!-- Plating Stk - Image hover using shared backend preview priority -->
-<script nonce="{{ csp_nonce }}">
-document.addEventListener("DOMContentLoaded", function () {
-  const previewCache = window.NickelModelPreviewCache || new Map();
-  window.NickelModelPreviewCache = previewCache;
-  let openTooltip = null;
-  let activeTrigger = null;
-  let activeStockNo = "";
-
-  function stockFromTrigger(trigger) {
-    return ((trigger && trigger.dataset.platingStkNo) || "").trim();
-  }
-
-  function fetchPreview(stockNo) {
-    if (previewCache.has(stockNo)) {
-      return Promise.resolve(previewCache.get(stockNo));
-    }
-    return fetch("/adminportal/api/model-hover-preview/?stock_no=" + encodeURIComponent(stockNo), {
-      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
-    })
-      .then(function (response) { return response.ok ? response.json() : null; })
-      .then(function (payload) {
-        previewCache.set(stockNo, payload);
-        return payload;
-      })
-      .catch(function () {
-        previewCache.set(stockNo, null);
-        return null;
-      });
-  }
-
-  function prepareTooltip(tooltip) {
-    if (!tooltip || tooltip.dataset.previewReady === "1") return;
-    tooltip.dataset.previewReady = "1";
-    tooltip.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;">' +
-        '<button type="button" class="info-btn" style="background:#007bff;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">Info</button>' +
-        '<button type="button" class="close-btn" style="background:#dc3545;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">Close</button>' +
-      '</div>' +
-      '<div class="image-container" style="display:flex;align-items:center;justify-content:center;width:210px;height:190px;border:none;border-radius:0;background:transparent;box-shadow:none;overflow:visible;padding:0;">' +
-        '<img class="nickel-preview-img" src="" alt="Model preview" style="display:block;width:100%;height:100%;max-width:210px;max-height:190px;object-fit:contain;object-position:center;border:none;border-radius:0;box-shadow:none;background:transparent;outline:none;clip-path:none;" loading="lazy" />' +
-      '</div>';
-  }
-
-  function closeTooltip(tooltip, trigger) {
-    if (!tooltip) return;
-    tooltip.classList.remove("pinned");
-    tooltip.style.opacity = "0";
-    tooltip.style.pointerEvents = "none";
-    tooltip.style.visibility = "hidden";
-    tooltip.style.display = "none";
-    if (trigger) {
-      trigger.style.backgroundColor = "";
-      trigger.style.borderRadius = "";
-    }
-    if (openTooltip === tooltip) {
-      openTooltip = null;
-      activeTrigger = null;
-      activeStockNo = "";
-    }
-  }
-
-  function renderPreview(trigger, stockNo, payload) {
-    if (activeTrigger !== trigger || activeStockNo !== stockNo) return;
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    const img = tooltip ? tooltip.querySelector(".nickel-preview-img") : null;
-    if (img && payload && payload.preview_image) {
-      img.src = payload.preview_image;
-    } else if (img) {
-      img.removeAttribute("src");
-    }
-  }
-
-  function showTooltip(trigger, pinned) {
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    const stockNo = stockFromTrigger(trigger);
-    if (!tooltip || !stockNo) return;
-    if (openTooltip && openTooltip !== tooltip) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
-    }
-    activeTrigger = trigger;
-    activeStockNo = stockNo;
-    openTooltip = tooltip;
-    prepareTooltip(tooltip);
-    tooltip.style.display = "flex";
-    tooltip.style.visibility = "visible";
-    tooltip.style.opacity = "1";
-    tooltip.style.pointerEvents = "auto";
-    if (pinned) {
-      tooltip.classList.add("pinned");
-      trigger.style.backgroundColor = "#e3f2fd";
-      trigger.style.borderRadius = "4px";
-    }
-    fetchPreview(stockNo).then(function (payload) {
-      renderPreview(trigger, stockNo, payload);
-    });
-  }
-
-  document.querySelectorAll(".model-hover-trigger").forEach(function (trigger) {
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    if (!tooltip) return;
-    prepareTooltip(tooltip);
-
-    trigger.addEventListener("mouseenter", function () {
-      if (!tooltip.classList.contains("pinned")) showTooltip(trigger, false);
-    });
-    trigger.addEventListener("mouseleave", function () {
-      if (!tooltip.classList.contains("pinned")) closeTooltip(tooltip, trigger);
-    });
-    tooltip.addEventListener("mouseenter", function () {
-      if (openTooltip === tooltip) {
-        tooltip.style.display = "flex";
-        tooltip.style.visibility = "visible";
-        tooltip.style.opacity = "1";
-        tooltip.style.pointerEvents = "auto";
-      }
-    });
-    tooltip.addEventListener("mouseleave", function () {
-      if (!tooltip.classList.contains("pinned")) closeTooltip(tooltip, trigger);
-    });
-    trigger.addEventListener("click", function (e) {
-      e.stopPropagation();
-      showTooltip(trigger, true);
-    });
-
-    const infoBtn = tooltip.querySelector(".info-btn");
-    if (infoBtn) {
-      infoBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const stockNo = activeTrigger ? stockFromTrigger(activeTrigger) : stockFromTrigger(trigger);
-        if (!stockNo) return;
-        window.location.href = "/adminportal/dp_visualaid/?plating_stk_no=" + encodeURIComponent(stockNo);
-      });
-    }
-
-    const closeBtn = tooltip.querySelector(".close-btn");
-    if (closeBtn) {
-      closeBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeTooltip(tooltip, trigger);
-      });
-    }
-  });
-
-  document.addEventListener("click", function (e) {
-    if (openTooltip && !e.target.closest(".model-image-tooltip") && !e.target.closest(".model-hover-trigger")) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
-    }
-  });
-
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && openTooltip) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
-    }
-  });
-});
-</script>
-
-<script nonce="{{ csp_nonce }}">
-document.addEventListener('DOMContentLoaded', function () {
-  'use strict';
-
-  // Hold/Unhold view icon click handler
-  document.querySelectorAll('.hold-remark-icon').forEach(function(icon) {
-    icon.addEventListener('click', function() {
-      var title = this.getAttribute('data-bs-original-title') || '';
-      if (title) {
-        Swal.fire({ icon: 'info', title: 'Hold / Release Remark', html: '<div style="text-align:left;">' + title.replace(/&#10;/g, '<br>') + '</div>', confirmButtonColor: '#028084' });
-      }
-    });
-  });
-
-  // Hold / Unhold Toggle with Remark
-  (function initHoldToggle() {
-    const holdModal = document.getElementById('holdRemarkModal');
-    const holdInput = document.getElementById('holdRemarkInput');
-    const holdError = document.getElementById('holdRemarkError');
-    const holdTitle = holdModal ? holdModal.querySelector('h5') : null;
-    const saveBtn = document.getElementById('saveHoldRemarkBtn');
-    const closeBtn = document.getElementById('closeHoldRemarkModal');
-
-    if (!holdModal || !holdInput || !saveBtn) return;
-
-    window.naHoldToggleState = null;
-
-    function attachHoldToggleListeners() {
-      document.querySelectorAll('.hold-toggle-btn').forEach(function(toggle) {
-        toggle.addEventListener('change', function(e) {
-          e.preventDefault();
-          const row = this.closest('tr');
-          const lotId = row ? row.getAttribute('data-stock-lot-id') : null;
-          if (!lotId) return;
-
-          // checked = active (not held), unchecked = held
-          const intendedHold = !this.checked;
-          const action = intendedHold ? 'hold' : 'unhold';
-
-          window.naHoldToggleState = {
-            toggle: this,
-            row: row,
-            lotId: lotId,
-            action: action,
-            originalChecked: !intendedHold
-          };
-          // Revert toggle visually until modal confirms
-          this.checked = !intendedHold;
-
-          if (holdTitle) holdTitle.textContent = action === 'hold' ? 'Hold Reason' : 'Release Reason';
-          holdInput.value = '';
-          if (holdError) holdError.textContent = '';
-          holdModal.style.display = 'flex';
-          holdInput.focus();
-        });
-      });
-    }
-
-    saveBtn.addEventListener('click', function() {
-      const state = window.naHoldToggleState;
-      if (!state) return;
-
-      const remark = holdInput.value.trim();
-      if (!remark) {
-        if (holdError) holdError.textContent = 'Remark is required.';
-        return;
-      }
-      if (remark.length > 50) {
-        if (holdError) holdError.textContent = 'Max 50 characters allowed.';
-        return;
-      }
-
-      saveBtn.disabled = true;
-      fetch('/nickel_audit/api/hold-unhold/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify({
-          lot_id: state.lotId,
-          action: state.action,
-          remark: remark
-        })
-      })
-      .then(r => r.json())
-      .then(data => {
-        saveBtn.disabled = false;
-        if (data.success) {
-          holdModal.style.display = 'none';
-          Swal.fire({
-            icon: 'success',
-            title: state.action === 'hold' ? 'Lot Held' : 'Lot Released',
-            text: data.message,
-            timer: 1500,
-            showConfirmButton: false
-          });
-          setTimeout(function() { location.reload(); }, 1500);
-        } else {
-          if (holdError) holdError.textContent = data.error || 'Failed to save.';
-        }
-      })
-      .catch(function(err) {
-        saveBtn.disabled = false;
-        if (holdError) holdError.textContent = 'Network error.';
-        console.error('[NickelAudit] Hold/Unhold error:', err);
-      });
-    });
-
-    if (closeBtn) {
-      closeBtn.addEventListener('click', function() {
-        holdModal.style.display = 'none';
-        window.naHoldToggleState = null;
-        if (typeof window.naRestoreRowPosition === 'function') {
-          window.naRestoreRowPosition();
-        }
-      });
-    }
-
-    holdModal.addEventListener('click', function(e) {
-      if (e.target === holdModal) {
-        holdModal.style.display = 'none';
-        window.naHoldToggleState = null;
-        if (typeof window.naRestoreRowPosition === 'function') {
-          window.naRestoreRowPosition();
-        }
-      }
-    });
-
-    attachHoldToggleListeners();
-  })();
 });
 </script>
 

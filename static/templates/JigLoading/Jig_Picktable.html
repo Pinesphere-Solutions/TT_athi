@@ -376,11 +376,11 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
               <!-- Plating Stk No -->
               <td>
                 {% if data.plating_stk_no %}
-                  <span class="model-hover-trigger" style="cursor: pointer;">
+                  <span class="model-hover-trigger" data-plating-stk-no="{{ data.plating_stk_no }}" style="cursor: pointer; position: relative; word-break: break-all;">
                     {{ data.plating_stk_no|highlight_plating_color|safe }}
                   </span>
                 {% elif data.model_stock_no.plating_stk_no %}
-                  <span class="model-hover-trigger" style="cursor: pointer;">
+                  <span class="model-hover-trigger" data-plating-stk-no="{{ data.model_stock_no.plating_stk_no }}" style="cursor: pointer; position: relative; word-break: break-all;">
                     {{ data.model_stock_no.plating_stk_no|highlight_plating_color|safe }}
                   </span>
                 {% else %}
@@ -997,16 +997,22 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
     </div>
     
     <!-- Header - Clean Minimal Layout -->
-    <div class="jig-modal-header" style="background:#fafbfc; padding:10px 16px; border-bottom:1px solid #e0e0e0; position:relative;">
-      <div style="display:flex; align-items:center; justify-content:space-between;">
-        <h3 id="jigAddModalTitle" style="margin:0; color:#37474f; font-size:15px; font-weight:600; letter-spacing:0.3px;">
-          Jig Loading
-          <span id="modalPlatingStockNo" style="display: none"></span>
-        </h3>
-        <!-- Cycle Badge (Absolute Top Right End) -->
-        <div style="position:absolute; top:10px; right:16px; background:#fff; border:1px solid #e0e0e0; border-radius:4px; padding:4px 10px; font-size:11px; color:#546e7a; font-weight:500;">
-          Cycle: <span id="modalNoOfCycle" style="color:#26a69a; font-weight:700; margin-left:4px;">-</span>
+    <div class="jig-modal-header jig-modal-header-v2">
+      <div class="jig-header-row">
+        <div class="jig-header-title-block">
+          <span class="jig-header-icon" aria-hidden="true">
+            <i class="fa fa-th-large"></i>
+          </span>
+          <h3 id="jigAddModalTitle" class="jig-header-title">
+            Jig Loading
+            <span class="jig-header-subtitle">Add jig, scan trays, and confirm the load</span>
+            <span id="modalPlatingStockNo" style="display: none"></span>
+          </h3>
         </div>
+      </div>
+      <!-- Cycle Badge (pinned top-right) -->
+      <div class="jig-header-cycle-pill">
+        Cycle <span id="modalNoOfCycle">-</span>
       </div>
     </div>
 
@@ -1020,43 +1026,64 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
 
     <!-- Form Fields -->
     <form id="jigAddForm" autocomplete="off">
-      <div class="form-fields-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:14px; margin-bottom:20px;">
-        <div class="form-group" style="min-width:120px; flex:1;">
+
+      <!-- ROW 1: compact single-line field strip -->
+      <div class="jig-field-strip">
+        <div class="jig-field-box jig-field-box-active">
           <label for="jigIdInput">Jig ID</label>
-          <input type="text" id="jigIdInput" maxlength="9" required placeholder="Enter Jig ID" style="width:100%;" />
+          <input type="text" id="jigIdInput" maxlength="9" required placeholder="J144-0000" />
           <div id="jigIdError" style="color:#dc3545; font-size:11px; margin-top:2px; display:none; font-weight:500;"></div>
         </div>
-        <div class="form-group" style="min-width:120px; flex:1;">
+        <div class="jig-field-box">
           <label for="nickelBathTypeInput">Nickel Bath Type</label>
-          <input type="text" id="nickelBathTypeInput" readonly style="width:100%" />
+          <input type="text" id="nickelBathTypeInput" readonly />
         </div>
-        <div class="form-group" style="min-width:120px; flex:1;">
+        <div class="jig-field-box">
           <label for="trayTypeInput">Tray Type</label>
-          <input type="text" id="trayTypeInput" readonly style="width:100%" />
+          <input type="text" id="trayTypeInput" readonly />
         </div>
-        <div class="form-group" style="min-width:100px; flex:1;">
+        <div class="jig-field-box jig-field-box-green">
           <label for="reallotQty">Lot Qty</label>
-          <input type="number" id="reallotQty" readonly style="width:100%; background:linear-gradient(135deg,#e0f7fa,#e8f5e9) !important; border:none; font-weight:700; color:#014d4e; font-size:13px;" value="{{ data.display_qty|default:0 }}" />
+          <input type="number" id="reallotQty" readonly value="{{ data.display_qty|default:0 }}" />
         </div>
-        <div class="form-group" style="min-width:85px; flex:0.8;">
+        <div class="jig-field-box">
           <label for="jigCapacityInput">Jig Capacity</label>
-          <input type="number" id="jigCapacityInput" readonly style="width:100%" />
+          <input type="number" id="jigCapacityInput" readonly />
         </div>
-        <div class="form-group" style="min-width:130px; flex:1;">
-          <label for="loadedCasesQtyInput">Loaded Cases Qty</label>
-          <span id="loadedCasesQtyDisplay" style="display:inline-flex; width:100%; border:1.5px solid #e2e8f0; background:linear-gradient(135deg,#f8fafc,#f1f5f9); font-weight:700; text-align:center; align-items:center; justify-content:center; border-radius:10px; padding:9px 0; font-size:13px; color:#1e293b; box-shadow:0 1px 2px rgba(0,0,0,0.03);" tabindex="-1" draggable="false" ondragstart="return false;" ondrop="return false;" onmousedown="if(event.detail>1){event.preventDefault();}"></span>
-          <span id="excessMessage" style="margin-left: 35px;color:#dc3545; font-size:11px; margin-top:4px; display:block; font-weight:500;"></span>
+        <div class="jig-field-box jig-field-box-amber">
+          <label for="emptyHooksInput">Empty Hooks</label>
+          <input type="number" id="emptyHooksInput" readonly />
+        </div>
+      </div>
+
+      <!-- ROW 2: stat cards (values are the same computed numbers used elsewhere in
+           this modal — Loaded Cases Qty is the running scanned-vs-capacity count
+           (unchanged element/id, only relocated here so it reads before Total Delink
+           Qty), Total Delink Qty mirrors the delink panel's own plan total, Broken
+           Hooks is the actual editable control, just re-skinned to sit inside a stat
+           card). delinkTrayCount is kept as a hidden element only — JS elsewhere
+           (row-count badges, resets) still reads/writes it. -->
+      <b id="delinkTrayCount" style="display:none;">0</b>
+      <div class="jig-stat-row">
+        <div class="jig-stat-card jig-stat-teal">
+          <div class="jig-stat-label">Loaded Cases Qty</div>
+          <div class="jig-stat-value">
+            <span id="loadedCasesQtyDisplay" class="jig-field-static-value" tabindex="-1" draggable="false" ondragstart="return false;" ondrop="return false;" onmousedown="if(event.detail>1){event.preventDefault();}"></span>
+          </div>
+          <span id="excessMessage" style="color:#dc3545; font-size:10px; margin-top:3px; display:block; font-weight:500;"></span>
           <input type="hidden" id="lotQtyHidden" value="0" />
         </div>
-        <div class="form-group" style="min-width:100px; flex:0.8;">
-          <label for="emptyHooksInput">Empty Hooks</label>
-          <input type="number" id="emptyHooksInput" readonly style="width:100%" />
+        <div class="jig-stat-card jig-stat-coral">
+          <div class="jig-stat-label">Total Delink Qty</div>
+          <div class="jig-stat-value"><b id="delinkPlannedQtyStat">0</b> <span class="jig-stat-suffix">pcs</span></div>
         </div>
-        <div class="form-group" style="min-width:120px; flex:1;">
-          <label for="brokenBuildupHooksInput">Broken Hooks</label>
-          <select id="brokenBuildupHooksInput" style="width:70%">
-            <option value="0">0</option>
-          </select>
+        <div class="jig-stat-card jig-stat-blue">
+          <div class="jig-stat-label">Broken / Buildup Hooks</div>
+          <div class="jig-stat-value">
+            <select id="brokenBuildupHooksInput" class="jig-stat-select">
+              <option value="0">0</option>
+            </select>
+          </div>
         </div>
       </div>
     </form>
@@ -1081,10 +1108,6 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
       
       <!-- Inline Stats -->
       <div style="display:flex; gap:12px; align-items:center; font-size:11px; color:#78909c;">
-        <span style="font-weight:500;">Trays: <b style="color:#26a69a; font-size:12px;" id="delinkTrayCount">0</b></span>
-        
-       
-        <span style="color:#e0e0e0;">|</span>
         <span style="font-weight:500;">Jig Cap: <b style="color:#26a69a; font-size:12px;" id="unifiedJigCapBadge">0</b></span>
         <span id="delinkStatsBadge" style="display:none; color:#43a047; font-weight:600; margin-left:8px; padding:2px 8px; background:rgba(200,230,201,0.3); border-radius:3px;"></span>
       </div>
@@ -1101,26 +1124,26 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
   </div>
 
   <!-- 2-COLUMN SPLIT CONTENT -->
-  <div class="split-panel-container" id="splitPanelContainer" style="display:flex; gap:12px; margin-top:10px; padding-bottom:10px;">
+  <div class="split-panel-container" id="splitPanelContainer" style="display:flex; flex-direction:column; gap:12px; margin-top:10px; padding-bottom:10px;">
 
     <!-- LEFT COLUMN: DELINK -->
     <div class="split-panel-left" id="splitPanelLeft" style="flex:1; min-width:0;">
-      <div class="split-panel-title" style="font-size:12px; font-weight:500; color:#028084; margin-bottom:6px; padding:4px 10px; background:rgba(2,128,132,0.06); border-radius:8px;">
-        <i class="fa fa-unlink" style="margin-right:5px;"></i> DELINK TRAYS
-        <span id="delinkPanelCount" style="float:right; font-weight:500; color:#1e293b;"></span>
+      <div class="split-panel-title split-panel-title-v2">
+        <i class="fa fa-refresh" style="margin-right:6px;"></i> DELINK TRAYS
+        <span id="delinkPanelCount" style="float:right; font-weight:500; color:#64748b;"></span>
       </div>
-      <div class="table-responsive" style="max-height:340px; overflow-y:auto;">
+      <div class="table-responsive">
         <table class="table table-bordered table-sm" id="delinkPanelTable" style="margin-bottom:0; font-size:13px;">
           <thead style="position:sticky; top:0; z-index:2;">
-            <tr style="background:linear-gradient(135deg, #e2fbff, #e8f5e9); color:#1e293b;">
-              <th style="width:36px; text-align:center;">S.No</th>
+            <tr class="delink-thead-row">
+              <th style="width:36px; text-align:center;">#</th>
               <th style="width:36px; text-align:center;"><!-- <input type="checkbox" id="delinkSelectAll" disabled style="width:14px;height:14px;accent-color:#028084;cursor:pointer;opacity:0.5;" title="Select All Delink" /> --></th>
               <th style="min-width:90px;">Model</th>
               <th style="min-width:80px;">Tray ID</th>
-              <th style="width:50px; text-align:center;">Orig Qty</th>
-              <th style="width:55px; text-align:center;">Delink Qty</th>
-              <th style="width:55px; text-align:center;">Excess Qty</th>
-              <th style="min-width:130px;">Scan Tray ID</th>
+              <th style="width:50px; text-align:center;">Orig</th>
+              <th style="width:55px; text-align:center;">Delink</th>
+              <th style="width:55px; text-align:center;">Excess</th>
+              <th style="min-width:130px;">Scan Tray</th>
               <th style="min-width:120px;">Status</th>
             </tr>
           </thead>
@@ -1136,45 +1159,50 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
       </div>
     </div>
 
-    <!-- RIGHT COLUMN: EXCESS / PARTIAL -->
-    <div class="split-panel-right" id="splitPanelRight" style="flex:0 0 340px; min-width:280px; display:none;">
+    <!-- BELOW DELINK: EXCESS / PARTIAL -->
+    <div class="split-panel-right" id="splitPanelRight" style="width:100%; min-width:0; display:none;">
       <div class="split-panel-title" style="font-size:12px; font-weight:500; color:#028084; margin-bottom:6px; padding:4px 10px; background:rgba(2,128,132,0.06); border-radius:8px;">
         <i class="fa fa-exclamation-triangle" style="margin-right:5px;"></i> EXCESS / PARTIAL
         <span id="excessPanelQtyBadge" style="float:right; font-weight:500; color:#028084;"></span>
       </div>
 
-      <!-- Top Tray Scan (MANDATORY when partial exists) — supports scan/type/checkbox -->
-      <!-- TOP TRAY - Clean Separated Card -->
-      <div id="excessTopTraySection" style="display:none; margin-bottom:8px; padding:10px; background:#fffef7; border:1px solid #fdd835; border-left:3px solid #fbc02d; border-radius:4px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <span style="font-size:10px; color:#f57f17; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">⭐ Top Tray</span>
-          <span id="excessTopTrayOriginal" style="font-size:10px; color:#f9a825; font-weight:500;"></span>
-        </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="text" id="excessTopTrayScanInput" class="excess-scan-input" maxlength="9" placeholder="Scan Tray ID" style="flex:1; padding:6px 10px; border:1px solid #fdd835; border-radius:3px; font-size:12px; font-weight:500; background:#fff; cursor:pointer;" />
-          <div style="min-width:50px; text-align:right;">
-            <div style="font-size:10px; color:#9e9e9e; font-weight:500;">Qty</div>
-            <div id="excessTopTrayQty" style="font-size:13px; font-weight:700; color:#f57f17;"></div>
-          </div>
-        </div>
-        <div id="excessTopTrayStatus" style="font-size:10px; margin-top:4px; font-weight:500; color:#43a047;"></div>
-      </div>
-
-      <!-- EXCESS TRAYS - Clean Table Card -->
+      <!-- SINGLE UNIFIED TABLE: Top Tray (mandatory scan row, when applicable) +
+           Excess Trays share one table/header instead of a separate card above it.
+           All child element IDs are unchanged from before — only the wrapper markup
+           (div card → table row) changed, so every scan/validate/restore/submit
+           handler that queries these IDs elsewhere keeps working untouched. -->
       <div style="background:#fafafa; border:1px solid #e0e0e0; border-radius:4px; padding:8px;">
         <div style="font-size:10px; color:#78909c; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; padding-left:2px;">
           📋 Excess Trays
         </div>
-        <div class="table-responsive" style="max-height:240px; overflow-y:auto; border-radius:3px; border:1px solid #e0e0e0;">
-          <table class="table table-bordered table-sm" id="excessPanelTable" style="margin-bottom:0; font-size:12px; background:#fff;">
+        <div class="table-responsive" style="max-height:280px; overflow-y:auto; border-radius:3px; border:1px solid #e0e0e0;">
+          <table class="table table-bordered table-sm" id="excessPanelTable" style="margin-bottom:0; font-size:13px; background:#fff;">
             <thead style="position:sticky; top:0; z-index:2; background:#f5f5f5; color:#546e7a; border-bottom:2px solid #e0e0e0;">
               <tr>
-                <th style="width:32px; text-align:center; padding:6px 4px; font-size:10px; font-weight:600;">No</th>
-                <th style="min-width:70px; padding:6px 8px; font-size:10px; font-weight:600;">Model</th>
-                <th style="width:40px; text-align:center; padding:6px 4px; font-size:10px; font-weight:600;">Qty</th>
-                <th style="min-width:110px; padding:6px 8px; font-size:10px; font-weight:600;">Scan Tray ID</th>
+                <th style="width:32px; text-align:center; padding:6px 4px; font-size:10.5px; font-weight:600;">No</th>
+                <th style="min-width:70px; padding:6px 8px; font-size:10.5px; font-weight:600;">Model</th>
+                <th style="width:40px; text-align:center; padding:6px 4px; font-size:10.5px; font-weight:600;">Qty</th>
+                <th style="min-width:110px; padding:6px 8px; font-size:10.5px; font-weight:600;">Scan Tray ID</th>
               </tr>
             </thead>
+            <tbody>
+              <!-- Top Tray row (MANDATORY scan when a partial/top tray exists) — same
+                   row structure/columns as the Excess Trays rows below it. -->
+              <tr id="excessTopTraySection" class="excess-top-tray-row" style="display:none;">
+                <td style="text-align:center; font-weight:700; color:#f57f17;">⭐</td>
+                <td style="font-weight:500;">
+                  <span id="excessTopTrayOriginal" class="delink-model-pill" style="font-size:10.5px; font-weight:600;"></span>
+                  <div style="font-size:9px; color:#f57f17; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; margin-top:2px;">Top Tray</div>
+                </td>
+                <td style="text-align:center;">
+                  <div id="excessTopTrayQty" style="font-weight:700; color:#f57f17;"></div>
+                </td>
+                <td>
+                  <input type="text" id="excessTopTrayScanInput" class="excess-scan-input" maxlength="9" placeholder="Scan Tray ID" style="width:100%; padding:6px 10px; border:1px solid #fdd835; border-radius:3px; font-weight:500; background:#fff; cursor:pointer;" />
+                  <div id="excessTopTrayStatus" style="font-size:10px; margin-top:4px; font-weight:500; color:#43a047;"></div>
+                </td>
+              </tr>
+            </tbody>
             <tbody id="excessPanelTableBody">
             <!-- Rendered by JS from split_panel.excess_panel -->
           </tbody>
@@ -1323,11 +1351,9 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
               var payload = {
                 lot_id: window.holdToggleState.currentLotId,
                 batch_id: window.holdToggleState.currentBatchId,
-                action: action
+                action: action,
+                reason: remark
               };
-              if (action === 'hold') {
-                payload.reason = remark;
-              }
               return JSON.stringify(payload);
             })()
           })
@@ -1429,6 +1455,8 @@ document.addEventListener('DOMContentLoaded', function () {
         batch_id: actionEl.getAttribute('data-batchid') || actionEl.dataset.batchid,
         lot_id: actionEl.getAttribute('data-lotid') || actionEl.dataset.lotid,
         stock_lot_id: actionEl.getAttribute('data-stocklotid') || actionEl.dataset.stocklotid,
+        plating_stk_no: actionEl.getAttribute('data-plating-stk-no') || actionEl.dataset.platingStkNo || '',
+        model_image: actionEl.getAttribute('data-model-image') || actionEl.dataset.modelImage || '',
       };
       // For excess lots, fetch half_filled_tray_info via lightweight API (not embedded in DOM)
       if (actionEl.getAttribute('data-is-excess-lot') === 'true') {
@@ -1477,7 +1505,7 @@ document.addEventListener('DOMContentLoaded', function () {
       } else {
         // Fallback: fetch data and populate right-side modal UI (CSP-safe)
         if (typeof showAcceptedTrayModal_Jig === 'function') {
-          showAcceptedTrayModal_Jig(params.stock_lot_id);
+          showAcceptedTrayModal_Jig(params.stock_lot_id, params);
         } else {
           const modal = document.getElementById('jigTrayViewPanel');
           if (modal) modal.classList.add('open');
@@ -1512,9 +1540,91 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  function normalizeJigModelImageUrl(rawUrl) {
+    const value = String(rawUrl || '').trim();
+    if (!value) return '';
+    try {
+      const parsed = new URL(value, window.location.origin);
+      const hostname = String(parsed.hostname || '').toLowerCase();
+      const isLoopbackHost =
+        hostname === '127.0.0.1' ||
+        hostname === 'localhost' ||
+        hostname === '::1' ||
+        hostname === '[::1]';
+      const isApplicationAsset =
+        parsed.pathname.startsWith('/media/') ||
+        parsed.pathname.startsWith('/static/');
+      if (parsed.origin === window.location.origin || (isLoopbackHost && isApplicationAsset)) {
+        return parsed.pathname + parsed.search + parsed.hash;
+      }
+      return parsed.href;
+    } catch (error) {
+      return value;
+    }
+  }
+
+  window.normalizeStockImageUrl = window.normalizeStockImageUrl || normalizeJigModelImageUrl;
+
+  function getJigImageUrlFromEntry(entry) {
+    if (!entry) return '';
+    return normalizeJigModelImageUrl(entry.preview_image || entry.image_url || entry.url || entry.src || entry.image || '');
+  }
+
+  function resolveJigPreviewImage(payload) {
+    const previewImage = normalizeJigModelImageUrl(payload && payload.preview_image);
+    if (previewImage) {
+      return { url: previewImage, view: payload && payload.preview_view ? payload.preview_view : 'Inside View' };
+    }
+    const images = Array.isArray(payload && payload.images) ? payload.images : [];
+    const insideView = images.find(function(entry) {
+      return String(entry && entry.view_code || '').toUpperCase() === 'IV';
+    });
+    const insideViewUrl = getJigImageUrlFromEntry(insideView);
+    if (insideViewUrl) return { url: insideViewUrl, view: 'Inside View' };
+    const noImage = images.find(function(entry) {
+      const viewCode = String(entry && entry.view_code || '').toUpperCase();
+      return viewCode === 'NO_IMAGE' || entry && entry.is_placeholder === true;
+    });
+    const noImageUrl = getJigImageUrlFromEntry(noImage);
+    if (noImageUrl) return { url: noImageUrl, view: 'No Image' };
+    return null;
+  }
+
+  async function setJigPanelModelImage(modal, stockNo, legacyImageUrl) {
+    const image = modal ? modal.querySelector('#trayModalUserImg_Jig_top') : null;
+    if (!image) return;
+    const normalizedLegacyUrl = normalizeJigModelImageUrl(legacyImageUrl);
+    const previewStockNo = String(stockNo || '').trim();
+    image.src = normalizedLegacyUrl || '/static/assets/images/imagePlaceholder.jpg';
+    image.alt = 'Loading model image';
+    image.style.objectFit = 'contain';
+    image.style.objectPosition = 'center';
+    if (!previewStockNo) return;
+    try {
+      const response = await fetch(
+        '/adminportal/api/model-hover-preview/?stock_no=' + encodeURIComponent(previewStockNo) + '&_ts=' + Date.now(),
+        {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        }
+      );
+      if (!response.ok) return;
+      const payload = await response.json();
+      const resolvedImage = resolveJigPreviewImage(payload);
+      if (resolvedImage) {
+        image.src = resolvedImage.url;
+        image.alt = resolvedImage.view || 'Model IV preview';
+      }
+    } catch (error) {
+      console.error('[Jig Loading] Panel model image failed:', error);
+    }
+  }
+
   // Adapter: fetch accepted tray data and populate the right-side modal for Jig page
-  function showAcceptedTrayModal_Jig(lotId) {
+  function showAcceptedTrayModal_Jig(lotId, sourceParams) {
     if (!lotId) return;
+    sourceParams = sourceParams || {};
 
     const trayInfoUrl = `/jig_loading/tray-info/?lot_id=${encodeURIComponent(lotId)}`;
     const brassUrl = `/brass_audit/brass_audit_get_accepted_tray_scan_data/?lot_id=${encodeURIComponent(lotId)}`;
@@ -1605,8 +1715,9 @@ document.addEventListener('DOMContentLoaded', function () {
           // Populate model no + plating stock no from backend response
           if (modelNoEl) {
             const modelNo = (meta && meta.model_no) ? meta.model_no : '';
-            const platingStkNo = (meta && meta.plating_stk_no) ? meta.plating_stk_no : '';
+            const platingStkNo = (meta && meta.plating_stk_no) ? meta.plating_stk_no : (sourceParams.plating_stk_no || '');
             modelNoEl.textContent = platingStkNo ? `${modelNo} (${platingStkNo})` : modelNo;
+            setJigPanelModelImage(modal, platingStkNo || modelNo, sourceParams.model_image);
           }
           if (lotQtyEl) lotQtyEl.textContent = lotQtyDisplay;
           if (sectionTitle) sectionTitle.textContent = 'Jig Loading - Tray Scan';
@@ -1911,6 +2022,22 @@ document.addEventListener('DOMContentLoaded', function () {
     return derivedClass;
   }
 
+  // ===== Resolve a row's per-model color class (for Excess/Top-Tray panel model pills) =====
+  // Matches by lot_id against the backend-decided multi_model_allocation list (already
+  // used to color the delink table rows), so a newly-added model's excess/top-tray rows
+  // get the SAME distinct background as its delink rows, instead of the plain default look.
+  function _getExcessRowColorClass(lotId) {
+    try {
+      var alloc = window._lastMultiModelAllocation || window._currentSecondaryLots || [];
+      for (var i = 0; i < alloc.length; i++) {
+        if (alloc[i] && alloc[i].lot_id === lotId) {
+          return getModelColorClass(alloc[i].model_index || (i + 1), alloc[i].color_class || null);
+        }
+      }
+    } catch (e) { /* ignore */ }
+    return '';
+  }
+
   // ==========================================================
   // 🔥 SPLIT PANEL RENDERER — 2-Column Delink + Excess
   // Backend is the ONLY source of truth. Frontend ONLY renders.
@@ -1957,9 +2084,15 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function() { _updateDelinkStatsBadge(); }, 50);
 
     // ===== Preserve validated scans AND focus state across re-renders =====
+    // Keyed by the BOX's own identity (its placeholder/auto tray id), not by the value
+    // typed into it — any physical tray can be scanned into any row, and once scanned it
+    // must stay in the exact box the user put it in. (A separate allocation tracker below
+    // handles marking OTHER rows unavailable when their own physical tray gets consumed
+    // elsewhere — that's about availability, not about relocating this scanned value.)
     var previousValidated = {};
     document.querySelectorAll('#delinkPanelTableBody .split-scan-input.validated, #excessPanelTableBody .split-scan-input.validated').forEach(function(inp) {
-      var k = (inp.dataset.autoTrayId || '') + '|' + (inp.dataset.panel || '');
+      var panel = inp.dataset.panel || '';
+      var k = (inp.dataset.autoTrayId || '') + '|' + panel;
       if (inp.value) previousValidated[k] = inp.value;
     });
     var prevTopTrayVal = '';
@@ -1991,7 +2124,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // ===== LEFT: DELINK PANEL =====
     var dBody = document.getElementById('delinkPanelTableBody');
     var dCountEl = document.getElementById('delinkPanelCount');
-    if (dCountEl) dCountEl.innerText = delinkTrays.length + ' trays / ' + (delinkPanel.total_delink_qty || 0) + ' qty';
+    if (dCountEl) dCountEl.innerText = delinkTrays.length + ' trays · ' + (delinkPanel.total_delink_qty || 0) + ' qty';
+    // Mirror the same plan total into the "Total Delink Qty" stat card (same number, second display target)
+    var plannedQtyStatEl = document.getElementById('delinkPlannedQtyStat');
+    if (plannedQtyStatEl) plannedQtyStatEl.innerText = delinkPanel.total_delink_qty || 0;
 
     if (dBody) {
       dBody.innerHTML = '';
@@ -2016,8 +2152,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // 1. S.No
           var td1 = document.createElement('td');
-          td1.style.cssText = 'text-align:center;font-weight:500;';
-          td1.innerText = row.sno;
+          td1.style.cssText = 'text-align:center;';
+          var snoBadge = document.createElement('span');
+          snoBadge.className = 'delink-sno-badge';
+          snoBadge.innerText = row.sno;
+          td1.appendChild(snoBadge);
           tr.appendChild(td1);
 
           // 2. Checkbox
@@ -2053,36 +2192,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // 3. Model
           var td3 = document.createElement('td');
-          td3.style.cssText = 'font-weight:500;font-size:12px;';
           // Backend may include lot id in the model label (eg. "MODEL [LID...]").
           // Hide lot id in the UI while preserving it in dataset.lotId for JS/backend use.
           var modelLabel = row.model_code || '';
           try { modelLabel = modelLabel.replace(/\s*\[.*\]$/, ''); } catch(e) {}
-          td3.innerText = modelLabel;
+          var modelPill = document.createElement('span');
+          modelPill.className = 'delink-model-pill';
+          modelPill.innerText = modelLabel;
+          td3.appendChild(modelPill);
           tr.appendChild(td3);
 
-          // 4. Tray ID
+          // 4. Tray ID (same font as the rest of the table — no monospace override,
+          // so this column no longer looks visually different from Model/Qty/etc.)
           var td4 = document.createElement('td');
-          td4.style.cssText = 'font-weight:500;font-family:monospace;';
+          td4.style.cssText = 'font-weight:500;';
           td4.innerText = row.tray_id || '';
           tr.appendChild(td4);
 
           // 5. Original Qty
           var td5 = document.createElement('td');
-          td5.style.cssText = 'text-align:center;font-weight:500;';
-          td5.innerText = row.original_qty != null ? row.original_qty : 0;
+          td5.style.cssText = 'text-align:center;';
+          var origQtyPill = document.createElement('span');
+          origQtyPill.className = 'delink-orig-qty-pill';
+          origQtyPill.innerText = row.original_qty != null ? row.original_qty : 0;
+          td5.appendChild(origQtyPill);
           tr.appendChild(td5);
 
           // 6. Delink Qty
           var td6 = document.createElement('td');
-          td6.style.cssText = 'text-align:center;font-weight:500;color:#028084;';
-          td6.innerText = row.delink_qty != null ? row.delink_qty : 0;
+          td6.style.cssText = 'text-align:center;';
+          var delinkQtyPill = document.createElement('span');
+          delinkQtyPill.className = 'delink-qty-pill';
+          delinkQtyPill.innerText = row.delink_qty != null ? row.delink_qty : 0;
+          td6.appendChild(delinkQtyPill);
           tr.appendChild(td6);
 
           // 7. Excess Qty
           var td7 = document.createElement('td');
-          td7.style.cssText = 'text-align:center;font-weight:500;color:#e67e22;';
-          td7.innerText = row.excess_qty != null ? row.excess_qty : 0;
+          td7.style.cssText = 'text-align:center;';
+          var excessQtyPill = document.createElement('span');
+          excessQtyPill.className = 'delink-excess-qty-pill';
+          excessQtyPill.innerText = row.excess_qty != null ? row.excess_qty : 0;
+          td7.appendChild(excessQtyPill);
           tr.appendChild(td7);
 
           // 8. Scan Tray ID
@@ -2100,6 +2251,9 @@ document.addEventListener('DOMContentLoaded', function () {
             inp.dataset.batchId = row.batch_id || window.CURRENT_BATCH_ID || '';
             inp.placeholder = panelMeta.tray_placeholder || row.scan_tray_id || 'Scan Tray ID';
             inp.style.cursor = 'pointer';
+            // Match on THIS box's own placeholder id (row.scan_tray_id), same key the
+            // snapshot above used — restores whatever was typed back into the exact same
+            // box, regardless of which physical tray it actually is.
             var restoreKey = (row.scan_tray_id || '') + '|delink';
             if (previousValidated[restoreKey]) {
               inp.value = previousValidated[restoreKey];
@@ -2133,26 +2287,52 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           }
 
-          // Restore allocation state from global tracker
+          // Restore allocation state from global tracker.
+          // NOTE: on a same-page re-render, no 'delink' branch here on purpose — any
+          // physical tray can be scanned into any row, and the box that was actually
+          // typed into is already restored above via previousValidated (keyed by the
+          // box's own identity). A row whose OWN designated tray happens to match a
+          // value typed into a DIFFERENT box must NOT be auto-filled/locked here —
+          // that was the bug (values relocating to the "matching" row instead of
+          // staying where scanned). top_tray/excess allocations are a different,
+          // legitimate case: they mark a row's own physical tray as already consumed
+          // elsewhere in the jig, not scanned into another delink row.
+          //
+          // EXCEPTION: after the Add-Model page navigation (window._isDraftRestoring),
+          // there is no live DOM to populate previousValidated from — the page just
+          // reloaded. window._trayAllocations (restored from sessionStorage) is the
+          // only surviving record of what was already delinked for Model 1, so it must
+          // be applied here (self-match on the row's own tray_id, same rule
+          // _restoreScannedTraysFromDraft already uses for the equivalent saved-draft
+          // restore path) or the delink scan is silently lost when Model 2 is added.
           var allocKey = (row.tray_id || '').toUpperCase();
           var alloc = (window._trayAllocations || {})[allocKey];
-          if (alloc && !restoredInp) {
+          if (alloc && !restoredInp && alloc.type === 'delink' && window._isDraftRestoring && allocKey) {
+            var selfInp = tr.querySelector('.split-scan-input');
+            var selfCb = tr.querySelector('.delink-row-checkbox');
+            if (selfInp && !selfInp.value) {
+              selfInp.value = row.tray_id;
+              selfInp.classList.add('validated');
+              selfInp.readOnly = true;
+              selfInp.style.background = '#d4edda';
+              selfInp.style.borderColor = '#28a745';
+              tr.classList.add('delink-row-scanned');
+              if (selfCb) { selfCb.checked = true; selfCb.disabled = true; selfCb.classList.add('locked'); }
+              var selfStatusCell = tr.cells[tr.cells.length - 1];
+              if (selfStatusCell) selfStatusCell.innerHTML = '<span class="unified-status-badge status-delinked" style="background:#d4edda;color:#155724;border:1px solid #28a745;">Delinked</span>';
+            }
+          } else if (alloc && !restoredInp && alloc.type !== 'delink') {
             var allocCb = tr.querySelector('.delink-row-checkbox');
             var allocInp = tr.querySelector('.split-scan-input');
             if (allocCb) { allocCb.checked = true; allocCb.disabled = true; allocCb.classList.add('locked'); }
-            if (alloc.type === 'delink') {
-              tr.classList.remove('delink-row-disabled');
-              tr.classList.add('delink-row-scanned');
-              if (allocInp) {
-                allocInp.value = row.scan_tray_id || row.tray_id || '';
-                allocInp.classList.add('validated');
-                allocInp.readOnly = true;
-                allocInp.style.background = '#d4edda';
-                allocInp.style.borderColor = '#28a745';
-              }
-              var stCell = tr.cells[tr.cells.length - 1];
-              if (stCell) stCell.innerHTML = '<span class="unified-status-badge status-delinked" style="background:#d4edda;color:#155724;border:1px solid #28a745;">Delinked</span>';
-            } else if (alloc.type === 'top_tray') {
+            // Re-stamp the confirmed-lock marker on this freshly-rebuilt <tr> — every
+            // re-render recreates the row from scratch, so the dataset flag set by
+            // _lockDelinkRowForExcess / _autoLockDelinkForTopTray on the OLD element
+            // does not carry over. Without this, a later rejected duplicate scan of
+            // this same tray_id would pass _undoTrayAllocation's confirmed-lock check
+            // and incorrectly clear this row's Excess/Top-Tray allocation.
+            tr.dataset.allocLocked = 'confirmed';
+            if (alloc.type === 'top_tray') {
               tr.classList.add('delink-row-disabled');
               tr.title = 'Allocated as top tray';
               if (allocInp && !allocInp.classList.contains('validated')) { allocInp.disabled = true; allocInp.style.opacity = '0.5'; allocInp.title = 'Allocated as top tray'; }
@@ -2165,6 +2345,58 @@ document.addEventListener('DOMContentLoaded', function () {
               var stCell = tr.cells[tr.cells.length - 1];
               if (stCell) stCell.innerHTML = '<span class="unified-status-badge status-excess-allocated" style="background:#fff4e6;color:#e67e22;border:1px solid #e67e22;">Allocated to Excess Lot</span>';
             }
+          }
+        });
+      }
+
+      // ===== RECONCILE DELINK STATUS BY TRAY_ID OWNERSHIP (survives re-renders) =====
+      // The per-row loop above (and the debounced re-render that follows every scan,
+      // via applyResponseToUI 300ms after _validateSplitScan) marks a row "Delinked"
+      // whenever ITS OWN scan box holds a validated value — but if the user scanned a
+      // DIFFERENT row's physical tray into this box, "Delinked" belongs to the row
+      // whose OWN Tray ID matches what was actually scanned, not to the box's row.
+      // Without this, the live fix applied in _validateSplitScan's DELINK_LOCK branch
+      // gets silently reverted the moment the next re-render rebuilds the table from
+      // scratch, since a fresh render only knows "this row's own box has a validated
+      // value" — it has no memory of which row _validateSplitScan corrected earlier.
+      // Re-running this correction on every render (not just right after a scan) keeps
+      // it right across live scans, draft restores, and page reloads alike.
+      if (dBody) {
+        var _reconcileRows = Array.from(dBody.querySelectorAll('tr[data-tray-id]'));
+        var _reconcileTrayIdToRow = {};
+        _reconcileRows.forEach(function(r) { _reconcileTrayIdToRow[(r.dataset.trayId || '').toUpperCase()] = r; });
+
+        // Clear any Delinked status/lock this render loop just set from box position alone
+        // (top_tray/excess-allocated rows are left untouched — those are legitimate).
+        _reconcileRows.forEach(function(r) {
+          if (r.classList.contains('delink-row-disabled')) return;
+          var ownInp = r.querySelector('.split-scan-input.validated');
+          var lastCell = r.cells[r.cells.length - 1];
+          if (lastCell && lastCell.querySelector('.status-delinked')) lastCell.innerHTML = '';
+          r.classList.remove('delink-row-scanned');
+          var cb = r.querySelector('.delink-row-checkbox');
+          if (cb && !ownInp) { cb.checked = false; cb.disabled = false; cb.classList.remove('locked'); }
+        });
+
+        // Re-apply Delinked status to the row that actually owns each scanned tray_id.
+        _reconcileRows.forEach(function(r) {
+          var inp = r.querySelector('.split-scan-input.validated');
+          if (!inp) return;
+          var scannedUpper = (inp.value || '').toUpperCase();
+          var ownerRow = _reconcileTrayIdToRow[scannedUpper] || r; // foreign-but-valid tray falls back to its own box's row
+          // A pure-excess row (delink_qty 0) can never legitimately show "Delinked" —
+          // fall back to the box's own row if a placeholder Tray ID collision would
+          // otherwise attribute a delink scan to it.
+          if (ownerRow !== r && parseInt(ownerRow.dataset.delinkQty || 0, 10) <= 0) ownerRow = r;
+          var ownCb = r.querySelector('.delink-row-checkbox');
+          if (ownCb) { ownCb.checked = true; ownCb.disabled = true; ownCb.classList.add('locked'); }
+          ownerRow.classList.remove('delink-row-disabled');
+          ownerRow.classList.add('delink-row-scanned');
+          var ownerCb = ownerRow.querySelector('.delink-row-checkbox');
+          if (ownerCb) { ownerCb.checked = true; ownerCb.disabled = true; ownerCb.classList.add('locked'); }
+          var ownerLastCell = ownerRow.cells[ownerRow.cells.length - 1];
+          if (ownerLastCell) {
+            ownerLastCell.innerHTML = '<span class="unified-status-badge status-delinked" style="background:#d4edda;color:#155724;border:1px solid #28a745;">Delinked</span>';
           }
         });
       }
@@ -2266,6 +2498,27 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       // Expose for _validateSplitScan (outer scope)
       window._updatePhaseMessage = _updatePhaseMessage;
+      // Expose so _attachSplitScanHandlers (outer scope) can gate manual typed/pasted
+      // scans the same way checkbox routing already does — without this, typing a
+      // tray ID straight into a Delink box bypasses the Top Tray → Excess → Delink
+      // order entirely, letting a tray meant for Excess get delinked instead while
+      // its real Excess/Delink row is left unscanned with a blank status.
+      window._getJigPhase = _getJigPhase;
+
+      // Sequential scan order must hold regardless of which row's checkbox the
+      // operator happens to click: the physical tray actually being loaded is
+      // always the NEXT one in row order, not necessarily the one whose box got
+      // checked. Returns the next not-yet-filled, non-disabled row's OWN
+      // designated Tray ID (in row/DOM order), or null if none remain.
+      function _getNextSequentialDelinkTrayId() {
+        var allDelinkRows = Array.from(dBody.querySelectorAll('tr[data-tray-id]'));
+        var nextRow = allDelinkRows.find(function(candidate) {
+          if (candidate.classList.contains('delink-row-disabled')) return false;
+          var candidateInp = candidate.querySelector('.split-scan-input');
+          return candidateInp && !candidateInp.classList.contains('validated') && !candidateInp.value.trim();
+        });
+        return nextRow ? (nextRow.dataset.trayId || null) : null;
+      }
 
       function _routeCheckboxTray(cb) {
         if (!cb || !cb.checked) return;
@@ -2305,11 +2558,16 @@ document.addEventListener('DOMContentLoaded', function () {
         // Phase = delink
         var inp = tr.querySelector('.split-scan-input');
         if (inp && !inp.classList.contains('validated')) {
-          inp.value = trayId;
+          // Use the next-in-sequence row's own designated tray ID, not this
+          // checked row's own ID — scanning must always progress in row order
+          // even when the operator checks boxes out of order. Falls back to
+          // this row's own ID only if no other row is left to sequence from.
+          var sequentialTrayId = _getNextSequentialDelinkTrayId() || trayId;
+          inp.value = sequentialTrayId;
           inp.style.background = '#f0fff4';
-          _validateSplitScan(trayId, inp, false);
+          _validateSplitScan(sequentialTrayId, inp, false);
           // Delink allocation saved in _validateSplitScan success handler
-          console.log('[CB_ROUTE] Tray', trayId, '→ DELINK (phase)');
+          console.log('[CB_ROUTE] Tray', sequentialTrayId, '(sequential) → DELINK box for checked row', trayId);
         }
       }
 
@@ -2404,7 +2662,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (topTray && topTraySection) {
           topTraySection.style.display = '';
           if (topTrayQtyEl) topTrayQtyEl.innerText = 'Qty: ' + (topTray.qty || 0);
-         /*  if (topTrayOrigEl) topTrayOrigEl.innerText = 'Original: ' + (topTray.model_code || ''); */
+          if (topTrayOrigEl) topTrayOrigEl.innerText = (topTray.model_code || '').replace(/\s*\[.*\]$/, '');
+          // Same per-model row background as the delink table / excess rows, so a
+          // newly-added model's Top Tray row is visually consistent with the rest.
+          topTraySection.classList.remove('model-bg-1', 'model-bg-2', 'model-bg-3', 'model-bg-4', 'model-bg-5');
+          var topTrayColorClass = _getExcessRowColorClass(topTray.lot_id || '');
+          if (topTrayColorClass) topTraySection.classList.add(topTrayColorClass);
           if (topTrayStatusEl) topTrayStatusEl.innerText = '';
           // Reset top tray checkbox state (prevents stale locked state from previous lot)
           if (topTrayCheckbox && !prevTopTrayVal) {
@@ -2471,13 +2734,18 @@ document.addEventListener('DOMContentLoaded', function () {
             td1.innerText = row.sno || '';
             tr.appendChild(td1);
 
-            // Model
+            // Model — same colored pill + per-model background used in the delink table,
+            // so a newly-added model reads consistently across both tables.
             var tdModel = document.createElement('td');
-            tdModel.style.cssText = 'font-weight:500;font-size:12px;';
             // Hide appended lot id if present (keep lot_id in dataset.lotId)
             var excessModelLabel = row.model_code || '';
             try { excessModelLabel = excessModelLabel.replace(/\s*\[.*\]$/, ''); } catch(e) {}
-            tdModel.innerText = excessModelLabel;
+            var excessModelColorClass = _getExcessRowColorClass(row.lot_id || '');
+            if (excessModelColorClass) tr.classList.add(excessModelColorClass);
+            var excessModelPill = document.createElement('span');
+            excessModelPill.className = 'delink-model-pill';
+            excessModelPill.innerText = excessModelLabel;
+            tdModel.appendChild(excessModelPill);
             tr.appendChild(tdModel);
 
             // Qty
@@ -2673,6 +2941,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (tr) {
           tr.classList.remove('delink-row-scanned');
           tr.classList.add('delink-row-disabled');
+          tr.dataset.allocLocked = 'confirmed';
           tr.title = 'Allocated as top tray — locked';
           // Disable the scan input
           var scanInp = tr.querySelector('.split-scan-input');
@@ -2709,6 +2978,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (tr) {
           tr.classList.remove('delink-row-scanned');
           tr.classList.add('delink-row-disabled');
+          tr.dataset.allocLocked = 'confirmed';
           tr.title = 'Allocated to Excess Lot';
           var scanInp = tr.querySelector('.split-scan-input');
           if (scanInp && !scanInp.classList.contains('validated')) {
@@ -2738,6 +3008,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (raw.length > 9) raw = raw.slice(0, 9);
         this.value = raw;
         if (raw.length === 9) {
+          // Top Tray → Excess → Delink order must hold for manual typed/pasted scans
+          // too, not just checkbox routing — otherwise a tray meant for Excess can be
+          // typed straight into a Delink box, leaving the tray's real Excess/Delink
+          // row unscanned (blank status) while this unrelated Delink row gets marked
+          // "Delinked" for a mismatched tray.
+          var currentPhase = typeof window._getJigPhase === 'function' ? window._getJigPhase() : 'delink';
+          if (currentPhase !== 'delink') {
+            var phaseLabel = currentPhase === 'top_tray' ? 'Top Tray' : 'Excess Lot';
+            this.value = '';
+            _showSplitScanMsg(this, 'Scan ' + phaseLabel + ' first', false);
+            if (typeof window._updatePhaseMessage === 'function') window._updatePhaseMessage();
+            return;
+          }
           _validateSplitScan(raw, this, false);
         }
       });
@@ -2786,6 +3069,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var cb = tr.querySelector('.delink-row-checkbox');
       if (cb) { cb.checked = false; cb.disabled = false; cb.classList.remove('locked'); }
       tr.classList.remove('delink-row-scanned', 'delink-row-disabled');
+      delete tr.dataset.allocLocked;
       var lastCell = tr.cells[tr.cells.length - 1];
       if (lastCell) lastCell.innerHTML = '';
     }
@@ -2889,19 +3173,44 @@ document.addEventListener('DOMContentLoaded', function () {
           inputEl.style.background = '#d4edda';
           inputEl.style.borderColor = '#28a745';
           _showSplitScanMsg(inputEl, 'Delinked ✓', true);
+
+          // The box the user actually typed into always gets its own checkbox
+          // locked (it holds a confirmed, validated scan and must not be reused).
           if (tr) {
-            tr.classList.remove('delink-row-disabled');
-            tr.classList.add('delink-row-scanned');
-            var cb = tr.querySelector('.delink-row-checkbox');
-            if (cb) { cb.checked = true; cb.disabled = true; cb.classList.add('locked'); }
-            // Status = "Delinked" (green)
-            var cells = tr.cells;
+            var ownCb = tr.querySelector('.delink-row-checkbox');
+            if (ownCb) { ownCb.checked = true; ownCb.disabled = true; ownCb.classList.add('locked'); }
+          }
+
+          // "Delinked" status must attach to the row whose OWN listed Tray ID
+          // matches the tray that was physically scanned — not to the row whose
+          // input box happened to receive the keystrokes. Manual typing/pasting
+          // out of order must not leave the true matching row blank while an
+          // unrelated row (where the value was mistakenly typed) shows "Delinked".
+          // Falls back to the box's own row when the scanned tray isn't one of
+          // this delink list's own trays (a genuinely foreign but valid tray),
+          // preserving prior behavior for that case.
+          var statusRow = tr;
+          var dBodyForMatch = document.getElementById('delinkPanelTableBody');
+          if (dBodyForMatch) {
+            var scannedUpper = trayId.toUpperCase();
+            var ownerRow = null;
+            dBodyForMatch.querySelectorAll('tr[data-tray-id]').forEach(function(candidate) {
+              if ((candidate.dataset.trayId || '').toUpperCase() === scannedUpper) ownerRow = candidate;
+            });
+            if (ownerRow) statusRow = ownerRow;
+          }
+          if (statusRow) {
+            statusRow.classList.remove('delink-row-disabled');
+            statusRow.classList.add('delink-row-scanned');
+            var statusCb = statusRow.querySelector('.delink-row-checkbox');
+            if (statusCb) { statusCb.checked = true; statusCb.disabled = true; statusCb.classList.add('locked'); }
+            var cells = statusRow.cells;
             if (cells && cells.length > 0) {
               var statusTd = cells[cells.length - 1];
               statusTd.innerHTML = '<span class="unified-status-badge status-delinked" style="background:#d4edda;color:#155724;border:1px solid #28a745;">Delinked</span>';
             }
           }
-          console.log('[DELINK_LOCK] Row locked for tray:', trayId);
+          console.log('[DELINK_LOCK] Scanned tray:', trayId, '-> status applied to row:', (statusRow && statusRow.dataset.trayId) || 'n/a');
           _updateDelinkTotalBar();
           _updateDelinkStatsBadge();
 
@@ -3010,15 +3319,40 @@ document.addEventListener('DOMContentLoaded', function () {
   function _undoTrayAllocation(trayId) {
     if (!trayId) return;
     var normalized = trayId.trim().toUpperCase();
-    if (window._trayAllocations) delete window._trayAllocations[normalized];
     var dBody = document.getElementById('delinkPanelTableBody');
+
+    // A rejected/duplicate scan attempt for this tray_id must not wipe a row that is
+    // ALREADY correctly locked from a different, genuinely successful scan — whether
+    // that row shows "Delinked" (delink-row-scanned) or "Allocated to Excess Lot" /
+    // "Verified for Top Tray" (delink-row-disabled + data-alloc-locked="confirmed",
+    // set only by _lockDelinkRowForExcess / _autoLockDelinkForTopTray after backend
+    // success — see those functions). This rollback must only undo the speculative
+    // lock THIS failed attempt itself made, never a status a prior scan earned.
+    // Must check BEFORE deleting from _trayAllocations, otherwise the confirmed
+    // allocation record is lost even when the DOM row is correctly left untouched,
+    // silently unlocking the tray on the next re-render.
+    var isConfirmedLocked = false;
+    if (dBody) {
+      dBody.querySelectorAll('tr[data-tray-id]').forEach(function(tr) {
+        if ((tr.dataset.trayId || '').trim().toUpperCase() !== normalized) return;
+        if (tr.classList.contains('delink-row-scanned') || tr.dataset.allocLocked === 'confirmed') {
+          isConfirmedLocked = true;
+        }
+      });
+    }
+    if (isConfirmedLocked) {
+      console.log('[UNDO_ALLOC] Skipped — tray already confirmed-locked by a prior successful scan:', trayId);
+      return;
+    }
+
+    if (window._trayAllocations) delete window._trayAllocations[normalized];
     if (!dBody) return;
     dBody.querySelectorAll('.delink-row-checkbox').forEach(function(cb) {
       if ((cb.dataset.trayId || '').trim().toUpperCase() === normalized) {
+        var tr = cb.closest('tr');
         cb.checked = false;
         cb.disabled = false;
         cb.classList.remove('locked');
-        var tr = cb.closest('tr');
         if (tr) {
           tr.classList.remove('delink-row-disabled');
           tr.title = '';
@@ -3166,8 +3500,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var totalDelinkQty = 0;
     document.querySelectorAll('#delinkPanelTableBody tr').forEach(function(tr) {
       var inp = tr.querySelector('.split-scan-input.validated');
-      var isAllocated = tr.classList.contains('delink-row-disabled');
-      // Count rows that are either validated (delinked) or allocated (excess/top)
+      // A row can be marked Delinked via a matching tray_id scanned into a
+      // DIFFERENT row's box (see DELINK_LOCK above) — it carries the
+      // 'delink-row-scanned' class but has no validated input of its own.
+      var isAllocated = tr.classList.contains('delink-row-disabled') || tr.classList.contains('delink-row-scanned');
+      // Count rows that are either validated (delinked) or allocated (excess/top/matched)
       if (!inp && !isAllocated) return;
       var origQtyCell = tr.cells[4]; // Original Qty column (index 4)
       var origQty = origQtyCell ? parseInt(origQtyCell.innerText || 0) || 0 : 0;
@@ -5119,6 +5456,7 @@ function clearJigUserInputs() {
   });
   document.querySelectorAll('#delinkPanelTableBody tr').forEach(function(tr) {
     tr.classList.remove('delink-row-scanned', 'delink-row-disabled');
+    delete tr.dataset.allocLocked;
     tr.title = '';
     var lastCell = tr.cells[tr.cells.length - 1];
     if (lastCell) lastCell.innerHTML = '';
@@ -5279,6 +5617,7 @@ function clearCurrentEditingSession() {
   // 4. Clear delink and excess row visual states
   document.querySelectorAll('#delinkPanelTableBody tr').forEach(function(tr) {
     tr.classList.remove('delink-row-scanned', 'delink-row-disabled');
+    delete tr.dataset.allocLocked;
     tr.title = '';
     const lastCell = tr.cells[tr.cells.length - 1];
     if (lastCell) lastCell.innerHTML = '';
@@ -6235,6 +6574,230 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
   }, 100);
+});
+</script>
+
+<!-- Jig Loading Pick dynamic IV hover preview -->
+<script nonce="{{ csp_nonce }}">
+document.addEventListener("DOMContentLoaded", function () {
+  let openTooltip = null;
+  const previewCache = Object.create(null);
+
+  function normalizeJigPickImageUrl(rawUrl) {
+    const value = String(rawUrl || "").trim();
+    if (!value) return "";
+    if (typeof window.normalizeStockImageUrl === "function") {
+      return window.normalizeStockImageUrl(value);
+    }
+    try {
+      const parsed = new URL(value, window.location.origin);
+      const hostname = String(parsed.hostname || "").toLowerCase();
+      const isLoopbackHost =
+        hostname === "127.0.0.1" ||
+        hostname === "localhost" ||
+        hostname === "::1" ||
+        hostname === "[::1]";
+      const isApplicationAsset =
+        parsed.pathname.startsWith("/media/") ||
+        parsed.pathname.startsWith("/static/");
+      if (parsed.origin === window.location.origin || (isLoopbackHost && isApplicationAsset)) {
+        return parsed.pathname + parsed.search + parsed.hash;
+      }
+      return parsed.href;
+    } catch (error) {
+      return value;
+    }
+  }
+
+  function getCacheKey(stockNo) {
+    return String(stockNo || "").trim().toUpperCase();
+  }
+
+  function getDefaultVisualAidUrl(stockNo) {
+    return "/adminportal/dp_visualaid/?plating_stk_no=" + encodeURIComponent(stockNo);
+  }
+
+  function setTriggerVisualAidUrl(trigger, stockNo, payload) {
+    if (!trigger || !stockNo) return;
+    trigger.dataset.visualAidUrl =
+      payload && payload.visual_aid_url ? payload.visual_aid_url : getDefaultVisualAidUrl(stockNo);
+  }
+
+  function getEntryUrl(entry) {
+    if (!entry) return "";
+    return normalizeJigPickImageUrl(entry.preview_image || entry.image_url || entry.url || entry.src || entry.image || "");
+  }
+
+  function resolvePreviewImage(payload) {
+    const previewImage = normalizeJigPickImageUrl(payload && payload.preview_image);
+    if (previewImage) {
+      return { url: previewImage, view: payload && payload.preview_view ? payload.preview_view : "Inside View" };
+    }
+    const images = Array.isArray(payload && payload.images) ? payload.images : [];
+    const insideView = images.find(function(entry) {
+      return String(entry && entry.view_code || "").toUpperCase() === "IV";
+    });
+    const insideViewUrl = getEntryUrl(insideView);
+    if (insideViewUrl) return { url: insideViewUrl, view: "Inside View" };
+    const noImage = images.find(function(entry) {
+      const viewCode = String(entry && entry.view_code || "").toUpperCase();
+      return viewCode === "NO_IMAGE" || entry && entry.is_placeholder === true;
+    });
+    const noImageUrl = getEntryUrl(noImage);
+    if (noImageUrl) return { url: noImageUrl, view: "No Image" };
+    return null;
+  }
+
+  function ensureTooltip(trigger) {
+    let tooltip = trigger.querySelector(".model-image-tooltip");
+    if (tooltip) return tooltip;
+    tooltip = document.createElement("div");
+    tooltip.className = "model-image-tooltip";
+    tooltip.style.cssText =
+      "position:absolute;left:80%;top:110%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:48px 18px 18px;z-index:10010;display:flex;align-items:center;gap:8px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity 0.2s;";
+    tooltip.innerHTML =
+      '<button type="button" class="info-btn" style="position:absolute;top:8px;left:8px;background:#007bff;color:white;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;display:none;">Info</button>' +
+      '<button type="button" class="close-btn" style="position:absolute;top:8px;right:8px;background:#dc3545;color:white;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;display:none;">Close</button>' +
+      '<div class="img-gallery" style="display:flex;justify-content:center;align-items:center;overflow:hidden;width:180px;height:130px;"><span style="font-size:12px;color:#777;text-align:center;">Loading...</span></div>';
+    trigger.appendChild(tooltip);
+    return tooltip;
+  }
+
+  function renderMessage(trigger, message) {
+    const gallery = ensureTooltip(trigger).querySelector(".img-gallery");
+    if (!gallery) return;
+    gallery.textContent = "";
+    const span = document.createElement("span");
+    span.textContent = message;
+    span.style.cssText = "font-size:12px;color:#777;text-align:center;padding:12px;";
+    gallery.appendChild(span);
+  }
+
+  function renderPreview(trigger, payload) {
+    const gallery = ensureTooltip(trigger).querySelector(".img-gallery");
+    const resolved = resolvePreviewImage(payload);
+    if (!gallery) return;
+    if (!resolved || !resolved.url) {
+      renderMessage(trigger, "Image unavailable");
+      return;
+    }
+    gallery.textContent = "";
+    const image = document.createElement("img");
+    image.src = resolved.url;
+    image.alt = resolved.view || "Model IV preview";
+    image.decoding = "async";
+    image.style.cssText = "width:120px;height:120px;object-fit:contain;object-position:center;display:block;";
+    image.addEventListener("error", function() {
+      renderMessage(trigger, "Image unavailable");
+    }, { once: true });
+    gallery.appendChild(image);
+  }
+
+  function loadPreview(trigger) {
+    const stockNo = String(trigger.getAttribute("data-plating-stk-no") || "").trim();
+    if (!stockNo) return;
+    const cacheKey = getCacheKey(stockNo);
+    setTriggerVisualAidUrl(trigger, stockNo);
+    if (previewCache[cacheKey]) {
+      setTriggerVisualAidUrl(trigger, stockNo, previewCache[cacheKey]);
+      renderPreview(trigger, previewCache[cacheKey]);
+      return;
+    }
+    renderMessage(trigger, "Loading...");
+    fetch("/adminportal/api/model-hover-preview/?stock_no=" + encodeURIComponent(stockNo) + "&_ts=" + Date.now(), {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function(response) {
+        if (!response.ok) throw new Error("Preview request failed");
+        return response.json();
+      })
+      .then(function(payload) {
+        previewCache[cacheKey] = payload || {};
+        setTriggerVisualAidUrl(trigger, stockNo, payload);
+        renderPreview(trigger, payload);
+      })
+      .catch(function(error) {
+        console.error("[Jig Loading Pick] Model preview failed:", error);
+        renderMessage(trigger, "Image unavailable");
+      });
+  }
+
+  function closeTooltip(tooltip, trigger) {
+    if (!tooltip) return;
+    tooltip.classList.remove("pinned");
+    tooltip.style.opacity = "0";
+    tooltip.style.visibility = "hidden";
+    tooltip.style.pointerEvents = "none";
+    const infoBtn = tooltip.querySelector(".info-btn");
+    const closeBtn = tooltip.querySelector(".close-btn");
+    if (infoBtn) infoBtn.style.display = "none";
+    if (closeBtn) closeBtn.style.display = "none";
+    if (trigger) {
+      trigger.style.backgroundColor = "";
+      trigger.style.borderRadius = "";
+    }
+    if (openTooltip === tooltip) openTooltip = null;
+  }
+
+  document.querySelectorAll(".model-hover-trigger[data-plating-stk-no]").forEach(function(trigger) {
+    const tooltip = ensureTooltip(trigger);
+    trigger.addEventListener("mouseenter", function() {
+      if (tooltip.classList.contains("pinned")) return;
+      tooltip.style.visibility = "visible";
+      tooltip.style.opacity = "1";
+      tooltip.style.pointerEvents = "auto";
+      tooltip.querySelector(".info-btn").style.display = "block";
+      tooltip.querySelector(".close-btn").style.display = "block";
+      loadPreview(trigger);
+    });
+    trigger.addEventListener("mouseleave", function() {
+      if (tooltip.classList.contains("pinned")) return;
+      closeTooltip(tooltip, trigger);
+    });
+    trigger.addEventListener("click", function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (openTooltip && openTooltip !== tooltip) {
+        closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
+      }
+      tooltip.classList.add("pinned");
+      tooltip.style.visibility = "visible";
+      tooltip.style.opacity = "1";
+      tooltip.style.pointerEvents = "auto";
+      tooltip.querySelector(".info-btn").style.display = "block";
+      tooltip.querySelector(".close-btn").style.display = "block";
+      trigger.style.backgroundColor = "#e3f2fd";
+      trigger.style.borderRadius = "4px";
+      openTooltip = tooltip;
+      loadPreview(trigger);
+    });
+    tooltip.querySelector(".info-btn").addEventListener("click", function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const stockNo = String(trigger.getAttribute("data-plating-stk-no") || "").trim();
+      if (stockNo) window.location.href = trigger.dataset.visualAidUrl || getDefaultVisualAidUrl(stockNo);
+    });
+    tooltip.querySelector(".close-btn").addEventListener("click", function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeTooltip(tooltip, trigger);
+    });
+  });
+
+  document.addEventListener("click", function(event) {
+    if (openTooltip && !event.target.closest(".model-image-tooltip") && !event.target.closest(".model-hover-trigger")) {
+      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
+    }
+  });
+
+  document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape" && openTooltip) {
+      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
+    }
+  });
 });
 </script>
 
@@ -7302,7 +7865,7 @@ if (window.jQuery) {
       
       // Clear previous timeout
       if (validationTimeout) clearTimeout(validationTimeout);
-      
+
       if (!val) {
         this.classList.remove('jig-id-error', 'jig-id-valid');
         if (jigIdErrEl) { jigIdErrEl.textContent = ''; jigIdErrEl.style.display = 'none'; }
@@ -7326,7 +7889,7 @@ if (window.jQuery) {
         if (lotId) {
           validateUrl += '&lot_id=' + encodeURIComponent(lotId);
         }
-        
+
         fetch(validateUrl, {
           method: 'GET',
           credentials: 'same-origin',
@@ -7334,6 +7897,14 @@ if (window.jQuery) {
         })
         .then(function(r) { return r.json(); })
         .then(function(d) {
+          // Stale-response guard: if the field's value changed (typed further, or was
+          // cleared) since this request was fired, drop the response — applying it now
+          // would silently re-show a valid/error state (and cycle count) for a jig id the
+          // user no longer has entered.
+          if ((jigIdEl.value || '').trim().toUpperCase() !== val) {
+            console.log('[JIG_VALIDATE] Stale response ignored, current value differs from:', val);
+            return;
+          }
           if (d.exists) {
             // Update cycle count display
             var cycleEl = document.getElementById('modalNoOfCycle');
@@ -7371,17 +7942,27 @@ if (window.jQuery) {
             jigIdEl.classList.remove('jig-id-error');
             if (jigIdErrEl) { jigIdErrEl.textContent = ''; jigIdErrEl.style.display = 'none'; }
             
-            // ✅ AUTO-FOCUS: Move cursor to excess top tray or first delink tray after Jig ID valid
+            // ✅ AUTO-FOCUS: Top Tray → Excess → Delink, same order as the phase
+            // gate used for scanning. Previously this always tried the Top Tray
+            // input whenever the Excess panel was visible, even for jigs that only
+            // have plain Excess trays (no Top Tray requirement) — in that case the
+            // hidden/non-applicable Top Tray input can't actually receive focus, so
+            // the cursor landed nowhere instead of the real next input to scan.
             setTimeout(function() {
-              var excessPanel = document.getElementById('splitPanelRight');
-              var excessExists = excessPanel && excessPanel.style.display !== 'none';
-              
-              if (excessExists) {
+              var phase = typeof window._getJigPhase === 'function' ? window._getJigPhase() : null;
+              if (phase === 'top_tray') {
                 var topTrayScanInput = document.getElementById('excessTopTrayScanInput');
                 if (topTrayScanInput) {
                   topTrayScanInput.focus();
                   topTrayScanInput.select();
                   console.log('✅ [AUTO-FOCUS] Excess top tray input focused');
+                }
+              } else if (phase === 'excess') {
+                var firstExcessInput = document.querySelector('#excessPanelTableBody .split-scan-input:not(.validated)');
+                if (firstExcessInput) {
+                  firstExcessInput.focus();
+                  firstExcessInput.select();
+                  console.log('✅ [AUTO-FOCUS] First excess tray input focused');
                 }
               } else {
                 var firstDelinkInput = document.querySelector('#delinkPanelTableBody .split-scan-input:not(.validated):not(:disabled)');
@@ -7484,17 +8065,24 @@ if (window.jQuery) {
           me.classList.remove('jig-id-error');
           if (jigIdErrEl) { jigIdErrEl.textContent = ''; jigIdErrEl.style.display = 'none'; }
           
-          // ✅ AUTO-FOCUS: Move cursor to excess top tray or first delink tray after Jig ID valid
+          // ✅ AUTO-FOCUS: Top Tray → Excess → Delink, same order as the phase
+          // gate used for scanning (see the debounced input handler above for
+          // the full explanation of why the Top-Tray-only check was insufficient).
           setTimeout(function() {
-            var excessPanel = document.getElementById('splitPanelRight');
-            var excessExists = excessPanel && excessPanel.style.display !== 'none';
-            
-            if (excessExists) {
+            var phase = typeof window._getJigPhase === 'function' ? window._getJigPhase() : null;
+            if (phase === 'top_tray') {
               var topTrayScanInput = document.getElementById('excessTopTrayScanInput');
               if (topTrayScanInput) {
                 topTrayScanInput.focus();
                 topTrayScanInput.select();
                 console.log('✅ [AUTO-FOCUS] Excess top tray input focused (blur)');
+              }
+            } else if (phase === 'excess') {
+              var firstExcessInput = document.querySelector('#excessPanelTableBody .split-scan-input:not(.validated)');
+              if (firstExcessInput) {
+                firstExcessInput.focus();
+                firstExcessInput.select();
+                console.log('✅ [AUTO-FOCUS] First excess tray input focused (blur)');
               }
             } else {
               var firstDelinkInput = document.querySelector('#delinkPanelTableBody .split-scan-input:not(.validated):not(:disabled)');
@@ -8622,5 +9210,3 @@ if (window.jQuery) {
 
 {% endblock %}
 {% endblock content %}
-
-

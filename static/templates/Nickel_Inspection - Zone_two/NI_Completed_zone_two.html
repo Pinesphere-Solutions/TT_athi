@@ -22,7 +22,7 @@
 .model-image-tooltip{
   transform: translateX(-25%) !important;
   top: 45% !important;
-  z-index: 500000 !important; /* high so it sits above table & scrollbar */
+  z-index: 10010 !important; /* high so it sits above table & scrollbar */
 
 }
 
@@ -575,7 +575,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
 .model-image-tooltip .nickel-preview-img,
 .model-image-tooltip .model-preview-image{
     border:none !important;
-    border-radius:0 !important;
+    border-radius:6px !important;
     box-shadow:none !important;
     background:transparent !important;
     outline:none !important;
@@ -588,6 +588,74 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
     border-radius:0 !important;
     box-shadow:none !important;
     background:transparent !important;
+}
+
+
+/* ================================================================
+   NICKEL WIPING ZONE 2 — MODEL PREVIEW FINAL OVERRIDE
+   Compact tooltip, tablet-safe sizing, and uncropped image display.
+   ================================================================ */
+.model-hover-trigger {
+  position: relative !important;
+}
+
+.model-image-tooltip {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 48px 18px 18px !important;
+  box-sizing: border-box !important;
+  background: #fff !important;
+  border: 1px solid #cfd8dc !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  overflow: visible !important;
+  z-index: 10010 !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+}
+
+.model-image-tooltip,
+.model-image-tooltip * {
+  font-size: 12px !important;
+}
+
+.model-image-tooltip .info-btn,
+.model-image-tooltip .close-btn {
+  min-width: 48px !important;
+  height: 28px !important;
+  padding: 4px 9px !important;
+  line-height: 18px !important;
+}
+
+.model-image-tooltip .img-gallery,
+.model-image-tooltip .nickel-preview-frame {
+  width: 260px !important;
+  height: 210px !important;
+  min-height: 210px !important;
+  max-height: 210px !important;
+  margin: 0 auto !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #fff !important;
+}
+
+.model-image-tooltip .img-gallery img,
+.model-image-tooltip .nickel-preview-img {
+  width: auto !important;
+  height: auto !important;
+  max-width: 240px !important;
+  max-height: 190px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  margin: auto !important;
+  border-radius: 6px !important;
+  display: block !important;
+  background: #fff !important;
 }
 
 </style>
@@ -756,14 +824,14 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
         <td {% if data.nq_hold_lot %} class="row-inactive-blur" {% endif %}>
                       <span class="model-hover-trigger" data-plating-stk-no="{{ data.plating_stk_no }}" style="cursor: pointer; word-break: break-all;">
                         {{ data.plating_stk_no|highlight_plating_color|safe_html }}
-                        <div class="model-image-tooltip" style="position: absolute; left: 80%; top: 110%; transform: translateX(-50%); background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 18px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.2s; min-width: 220px;">
+                        <div class="model-image-tooltip" style="position: absolute; left: 80%; top: 110%; transform: translateX(-50%); background: #fff; border: 1px solid #ccc; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 48px 18px 18px; z-index: 10010; display: flex; justify-content:center; align-items:center; opacity: 0; pointer-events: none; transition: opacity 0.2s; box-sizing:border-box;">
                           
                           <!-- Header with Info and Close buttons -->
                           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <button class="info-btn" style="background: #007bff; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
+                            <button class="info-btn" style="position:absolute; top:14px; left:16px; z-index:2; background: #007bff; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
                                Info
                             </button>
-                            <button class="close-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
+                            <button class="close-btn" style="position:absolute; top:14px; right:16px; z-index:2; background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
                                Close
                             </button>
                           </div>
@@ -771,7 +839,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                           <!-- Image gallery section -->
                           <div style="display: flex; align-items: center; gap: 8px;">
                             <!-- Hide scroll buttons since only one image is shown -->
-                            <div class="img-gallery" style="display: flex; gap: 6px; overflow: hidden; width: 180px;"></div>
+                            <div class="img-gallery" style="display:flex;justify-content:center;align-items:center;overflow:hidden;width:260px;height:210px;min-height:210px;box-sizing:border-box;"></div>
                           </div>
                         </div>
                       </span>
@@ -1720,25 +1788,78 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!modalUserImg || !stockNo) return;
         const previewCache = window.NickelModelPreviewCache || new Map();
         window.NickelModelPreviewCache = previewCache;
+        const cacheKey = String(stockNo || '').trim().toUpperCase();
+        const normalizeModalImageUrl = function(rawUrl) {
+          if (window.NickelNormalizeModelImageUrl) {
+            return window.NickelNormalizeModelImageUrl(rawUrl);
+          }
+          if (window.normalizeStockImageUrl) {
+            return window.normalizeStockImageUrl(rawUrl);
+          }
+          return String(rawUrl || '').trim();
+        };
+        const getImageUrlFromEntry = function(entry) {
+          if (!entry) return "";
+          return entry.preview_image || entry.image_url || entry.url || entry.src || entry.image || "";
+        };
+        const resolveModalImage = function(payload) {
+          const previewUrl = normalizeModalImageUrl(payload && payload.preview_image);
+          if (previewUrl) {
+            return { url: previewUrl, alt: payload && payload.preview_view ? payload.preview_view : "Inside View" };
+          }
+          const images = Array.isArray(payload && payload.images) ? payload.images : [];
+          const ivEntry = images.find(function(image) {
+            return String(image && image.view_code || "").toUpperCase() === "IV";
+          });
+          const ivUrl = normalizeModalImageUrl(getImageUrlFromEntry(ivEntry));
+          if (ivUrl) {
+            return { url: ivUrl, alt: "Inside View" };
+          }
+          const placeholderEntry = images.find(function(image) {
+            const viewCode = String(image && image.view_code || "").toUpperCase();
+            return viewCode === "NO_IMAGE" || image && image.is_placeholder === true;
+          });
+          const placeholderUrl = normalizeModalImageUrl(getImageUrlFromEntry(placeholderEntry));
+          if (placeholderUrl) {
+            return { url: placeholderUrl, alt: "No Image" };
+          }
+          return null;
+        };
         const renderPayload = function (payload) {
-          if (payload && payload.preview_image && modal.dataset.activePlatingStkNo === stockNo) {
-            modalUserImg.src = payload.preview_image;
+          if (modal.dataset.activePlatingStkNo !== stockNo) return;
+          const resolvedImage = resolveModalImage(payload);
+          if (resolvedImage) {
+            modalUserImg.src = resolvedImage.url;
+            modalUserImg.alt = resolvedImage.alt;
+          } else {
+            modalUserImg.removeAttribute('src');
+            modalUserImg.alt = 'Image unavailable';
           }
         };
-        modalUserImg.src = "";
-        if (previewCache.has(stockNo)) {
-          renderPayload(previewCache.get(stockNo));
+        modalUserImg.removeAttribute('src');
+        modalUserImg.alt = 'Loading model image';
+        if (previewCache.has(cacheKey)) {
+          renderPayload(previewCache.get(cacheKey));
           return;
         }
-        fetch("/adminportal/api/model-hover-preview/?stock_no=" + encodeURIComponent(stockNo), {
-          headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
+        fetch("/adminportal/api/model-hover-preview/?stock_no=" + encodeURIComponent(stockNo) + "&_ts=" + Date.now(), {
+          credentials: "same-origin",
+          headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+          cache: "no-store"
         })
           .then(function (response) { return response.ok ? response.json() : null; })
           .then(function (payload) {
-            previewCache.set(stockNo, payload);
+            if (payload) {
+              payload.preview_image = normalizeModalImageUrl(payload.preview_image);
+            }
+            previewCache.set(cacheKey, payload);
             renderPayload(payload);
           })
-          .catch(function () {});
+          .catch(function () {
+            if (modal.dataset.activePlatingStkNo !== stockNo) return;
+            modalUserImg.removeAttribute('src');
+            modalUserImg.alt = 'Image unavailable';
+          });
       }
 
       modal.dataset.activePlatingStkNo = (link.dataset.platingStkNo || '').trim();
@@ -2364,158 +2485,461 @@ document.addEventListener("DOMContentLoaded", function() {
 <!-- Plating Stk - Image hover - fixed position while hitting the Plating Stk No -->
 <script nonce="{{ csp_nonce }}">
 document.addEventListener("DOMContentLoaded", function () {
-  const previewCache = window.NickelModelPreviewCache || new Map();
-  window.NickelModelPreviewCache = previewCache;
-  let openTooltip = null;
-  let activeTrigger = null;
-  let activeStockNo = "";
+  "use strict";
 
-  function stockFromTrigger(trigger) {
-    return ((trigger && trigger.dataset.platingStkNo) || "").trim();
+  const triggers = Array.from(
+    document.querySelectorAll(".model-hover-trigger[data-plating-stk-no]")
+  );
+
+  if (!triggers.length) return;
+
+  const previewCache = window.NickelModelPreviewCache || new Map();
+  const requestCache = window.NickelModelPreviewRequestCache || new Map();
+
+  window.NickelModelPreviewCache = previewCache;
+  window.NickelModelPreviewRequestCache = requestCache;
+
+  let openTooltip = null;
+  let pinnedTrigger = null;
+  let hideTimer = null;
+
+  function normalizeImageUrl(rawUrl) {
+    const value = String(rawUrl || "").trim();
+    if (!value) return "";
+
+    try {
+      const parsed = new URL(value, window.location.origin);
+      const hostname = String(parsed.hostname || "").toLowerCase();
+      const isLoopbackHost =
+        hostname === "127.0.0.1" ||
+        hostname === "localhost" ||
+        hostname === "::1" ||
+        hostname === "[::1]";
+      const isApplicationAsset =
+        parsed.pathname.startsWith("/media/") ||
+        parsed.pathname.startsWith("/static/");
+
+      if (
+        parsed.origin === window.location.origin ||
+        (isLoopbackHost && isApplicationAsset)
+      ) {
+        return parsed.pathname + parsed.search + parsed.hash;
+      }
+
+      return parsed.href;
+    } catch (error) {
+      return value;
+    }
   }
 
-  function fetchPreview(stockNo) {
-    if (previewCache.has(stockNo)) {
-      return Promise.resolve(previewCache.get(stockNo));
+  function normalizePreviewPayload(payload) {
+    if (!payload) return null;
+    payload.preview_image = normalizeImageUrl(payload.preview_image);
+    if (Array.isArray(payload.images)) {
+      payload.images = payload.images.map(function (image) {
+        if (!image) return image;
+        return Object.assign({}, image, {
+          url: normalizeImageUrl(image.url || image.image_url || image.src || image.image || "")
+        });
+      });
     }
-    return fetch("/adminportal/api/model-hover-preview/?stock_no=" + encodeURIComponent(stockNo), {
-      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
-    })
-      .then(function (response) { return response.ok ? response.json() : null; })
-      .then(function (payload) {
-        previewCache.set(stockNo, payload);
-        return payload;
+    return payload;
+  }
+
+  function getPlaceholderImageUrl(payload) {
+    const images = Array.isArray(payload && payload.images) ? payload.images : [];
+    const placeholder = images.find(function (image) {
+      const viewCode = String(image && image.view_code || "").toUpperCase();
+      return viewCode === "NO_IMAGE" || image && image.is_placeholder === true;
+    });
+    return normalizeImageUrl(placeholder && (placeholder.url || placeholder.image_url || placeholder.src || placeholder.image));
+  }
+
+  window.normalizeStockImageUrl = normalizeImageUrl;
+  window.NickelNormalizeModelImageUrl = normalizeImageUrl;
+
+  function getStockNo(trigger) {
+    return String(
+      trigger && trigger.dataset
+        ? trigger.dataset.platingStkNo || ""
+        : ""
+    ).trim();
+  }
+
+  function getStockCacheKey(stockNo) {
+    return String(stockNo || "").trim().toUpperCase();
+  }
+
+  function getDefaultVisualAidUrl(stockNo) {
+    return "/adminportal/dp_visualaid/?plating_stk_no=" + encodeURIComponent(stockNo);
+  }
+
+  function setTriggerVisualAidUrl(trigger, stockNo, payload) {
+    if (!trigger || !stockNo) return;
+    trigger.dataset.visualAidUrl = payload && payload.visual_aid_url
+      ? payload.visual_aid_url
+      : getDefaultVisualAidUrl(stockNo);
+  }
+
+  function getTooltip(trigger) {
+    return trigger
+      ? trigger.querySelector(".model-image-tooltip")
+      : null;
+  }
+
+  function prepareTooltip(trigger) {
+    const tooltip = getTooltip(trigger);
+    if (!tooltip || tooltip.dataset.dynamicPreviewReady === "1") return;
+
+    tooltip.dataset.dynamicPreviewReady = "1";
+    tooltip.innerHTML =
+      '<div class="nickel-preview-frame">' +
+        '<div class="img-gallery">' +
+          '<span style="font-size:12px;color:#777;text-align:center;">Loading...</span>' +
+        '</div>' +
+      '</div>' +
+      '<button type="button" class="info-btn" style="position:absolute;top:14px;left:16px;z-index:2;background:#007bff;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">Info</button>' +
+      '<button type="button" class="close-btn" style="position:absolute;top:14px;right:16px;z-index:2;background:#dc3545;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">Close</button>';
+  }
+
+  function getGallery(trigger) {
+    const tooltip = getTooltip(trigger);
+    return tooltip ? tooltip.querySelector(".img-gallery") : null;
+  }
+
+  function renderLoading(trigger) {
+    const gallery = getGallery(trigger);
+    if (!gallery) return;
+
+    gallery.innerHTML =
+      '<span style="font-size:12px;color:#777;text-align:center;">Loading...</span>';
+  }
+
+  function renderMessage(trigger, message) {
+    const gallery = getGallery(trigger);
+    if (!gallery) return;
+
+    gallery.textContent = "";
+
+    const span = document.createElement("span");
+    span.textContent = message;
+    span.style.cssText =
+      "font-size:12px;color:#777;text-align:center;padding:12px;";
+    gallery.appendChild(span);
+  }
+
+  function renderPreview(trigger, payload) {
+    const gallery = getGallery(trigger);
+    if (!gallery) return;
+
+    const rawUrl = payload && payload.preview_image;
+    const imageUrl = normalizeImageUrl(rawUrl);
+
+    if (!imageUrl) {
+      renderMessage(trigger, "Image unavailable");
+      return;
+    }
+
+    gallery.textContent = "";
+
+    const image = document.createElement("img");
+    image.className = "nickel-preview-img";
+    image.alt = payload && payload.is_placeholder
+      ? "No image available"
+      : "Model IV preview";
+    image.loading = "eager";
+    image.decoding = "async";
+    image.style.cssText =
+      "display:block;width:auto;height:auto;max-width:240px;max-height:190px;" +
+      "object-fit:contain;object-position:center;margin:auto;" +
+      "border-radius:6px;background:#fff;";
+
+    image.addEventListener("error", function () {
+      const placeholderUrl = getPlaceholderImageUrl(payload);
+      if (placeholderUrl && image.src !== placeholderUrl) {
+        image.src = placeholderUrl;
+        image.alt = "No image available";
+        return;
+      }
+      console.error(
+        "[Nickel Wiping Z2] Preview image failed:",
+        rawUrl,
+        "Normalized URL:",
+        imageUrl
+      );
+      renderMessage(trigger, "Image could not be loaded");
+    });
+
+    gallery.appendChild(image);
+    image.src = imageUrl;
+  }
+
+  function requestPreview(stockNo, cacheKey) {
+    if (previewCache.has(cacheKey)) {
+      return Promise.resolve(previewCache.get(cacheKey));
+    }
+
+    if (requestCache.has(cacheKey)) {
+      return requestCache.get(cacheKey);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(function () {
+      controller.abort();
+    }, 10000);
+
+    const request = fetch(
+      "/adminportal/api/model-hover-preview/?stock_no=" +
+        encodeURIComponent(stockNo) +
+        "&_ts=" +
+        Date.now(),
+      {
+        headers: {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: controller.signal
+      }
+    )
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
       })
-      .catch(function () {
-        previewCache.set(stockNo, null);
-        return null;
+      .then(function (payload) {
+        const normalizedPayload = normalizePreviewPayload(payload);
+        previewCache.set(cacheKey, normalizedPayload);
+        return normalizedPayload;
+      })
+      .finally(function () {
+        window.clearTimeout(timeoutId);
+        requestCache.delete(cacheKey);
+      });
+
+    requestCache.set(cacheKey, request);
+    return request;
+  }
+
+  function loadPreview(trigger) {
+    const stockNo = getStockNo(trigger);
+    const cacheKey = getStockCacheKey(stockNo);
+
+    if (!stockNo) {
+      renderMessage(trigger, "Stock number unavailable");
+      return;
+    }
+
+    setTriggerVisualAidUrl(trigger, stockNo);
+
+    if (previewCache.has(cacheKey)) {
+      const cached = previewCache.get(cacheKey);
+      setTriggerVisualAidUrl(trigger, stockNo, cached);
+      renderPreview(trigger, cached);
+      return;
+    }
+
+    renderLoading(trigger);
+
+    requestPreview(stockNo, cacheKey)
+      .then(function (payload) {
+        setTriggerVisualAidUrl(trigger, stockNo, payload);
+        renderPreview(trigger, payload);
+      })
+      .catch(function (error) {
+        console.error(
+          "[Nickel Wiping Z2] Preview request failed:",
+          stockNo,
+          error
+        );
+
+        if (error && error.name === "AbortError") {
+          renderMessage(trigger, "Image request timed out");
+        } else {
+          renderMessage(trigger, "Image unavailable");
+        }
       });
   }
 
-  function prepareTooltip(tooltip) {
-    if (!tooltip || tooltip.dataset.previewReady === "1") return;
-    tooltip.dataset.previewReady = "1";
-    tooltip.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;">' +
-        '<button type="button" class="info-btn" style="background:#007bff;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">Info</button>' +
-        '<button type="button" class="close-btn" style="background:#dc3545;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">Close</button>' +
-      '</div>' +
-      '<div style="display:flex;align-items:center;justify-content:center;width:180px;height:150px;border:none;border-radius:0;background:transparent;box-shadow:none;">' +
-        '<img class="nickel-preview-img" src="" alt="Model preview" style="width:100%;height:100%;object-fit:contain;object-position:center;border:none;border-radius:0;box-shadow:none;background:transparent;outline:none;" loading="lazy" />' +
-      '</div>';
-  }
-
-  function closeTooltip(tooltip, trigger) {
+  function positionTooltip(trigger) {
+    const tooltip = getTooltip(trigger);
     if (!tooltip) return;
-    tooltip.classList.remove("pinned");
-    tooltip.style.opacity = "0";
-    tooltip.style.pointerEvents = "none";
-    tooltip.style.visibility = "hidden";
-    tooltip.style.display = "none";
-    if (trigger) {
-      trigger.style.backgroundColor = "";
-      trigger.style.borderRadius = "";
+
+    tooltip.style.left = "80%";
+    tooltip.style.right = "auto";
+    tooltip.style.top = "110%";
+    tooltip.style.transform = "translateX(-50%)";
+
+    const rect = tooltip.getBoundingClientRect();
+
+    if (rect.right > window.innerWidth - 8) {
+      tooltip.style.left = "auto";
+      tooltip.style.right = "0";
+      tooltip.style.transform = "none";
     }
-    if (openTooltip === tooltip) {
-      openTooltip = null;
-      activeTrigger = null;
-      activeStockNo = "";
+
+    if (rect.left < 8) {
+      tooltip.style.left = "0";
+      tooltip.style.right = "auto";
+      tooltip.style.transform = "none";
     }
   }
 
-  function renderPreview(trigger, stockNo, payload) {
-    if (activeTrigger !== trigger || activeStockNo !== stockNo) return;
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    const img = tooltip ? tooltip.querySelector(".nickel-preview-img") : null;
-    if (img && payload && payload.preview_image) {
-      img.src = payload.preview_image;
-    } else if (img) {
-      img.removeAttribute("src");
+  function closeTrigger(trigger, force) {
+    if (!trigger) return;
+    if (!force && pinnedTrigger === trigger) return;
+
+    const tooltip = getTooltip(trigger);
+
+    if (tooltip) {
+      tooltip.classList.remove("pinned");
+      tooltip.style.opacity = "0";
+      tooltip.style.visibility = "hidden";
+      tooltip.style.pointerEvents = "none";
+      tooltip.style.display = "none";
     }
+
+    trigger.style.backgroundColor = "";
+    trigger.style.borderRadius = "";
+
+    if (openTooltip === tooltip) openTooltip = null;
+    if (force && pinnedTrigger === trigger) pinnedTrigger = null;
   }
 
-  function showTooltip(trigger, pinned) {
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    const stockNo = stockFromTrigger(trigger);
-    if (!tooltip || !stockNo) return;
-    if (openTooltip && openTooltip !== tooltip) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
-    }
-    activeTrigger = trigger;
-    activeStockNo = stockNo;
+  function closeOthers(currentTrigger) {
+    triggers.forEach(function (trigger) {
+      if (trigger !== currentTrigger) {
+        closeTrigger(trigger, true);
+      }
+    });
+  }
+
+  function openTrigger(trigger, pin) {
+    window.clearTimeout(hideTimer);
+    closeOthers(trigger);
+    prepareTooltip(trigger);
+
+    const tooltip = getTooltip(trigger);
+    if (!tooltip) return;
+
     openTooltip = tooltip;
-    prepareTooltip(tooltip);
+
     tooltip.style.display = "flex";
     tooltip.style.visibility = "visible";
     tooltip.style.opacity = "1";
     tooltip.style.pointerEvents = "auto";
-    if (pinned) {
+
+    if (pin) {
+      pinnedTrigger = trigger;
       tooltip.classList.add("pinned");
       trigger.style.backgroundColor = "#e3f2fd";
       trigger.style.borderRadius = "4px";
     }
-    fetchPreview(stockNo).then(function (payload) {
-      renderPreview(trigger, stockNo, payload);
-    });
+
+    positionTooltip(trigger);
+    loadPreview(trigger);
   }
 
-  document.querySelectorAll(".model-hover-trigger").forEach(function (trigger) {
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    if (!tooltip) return;
-    prepareTooltip(tooltip);
+  triggers.forEach(function (trigger) {
+    prepareTooltip(trigger);
+
+    const tooltip = getTooltip(trigger);
+    if (!tooltip || trigger.dataset.nickelZ2HoverBound === "1") return;
+
+    trigger.dataset.nickelZ2HoverBound = "1";
 
     trigger.addEventListener("mouseenter", function () {
-      if (!tooltip.classList.contains("pinned")) showTooltip(trigger, false);
-    });
-    trigger.addEventListener("mouseleave", function () {
-      if (!tooltip.classList.contains("pinned")) closeTooltip(tooltip, trigger);
-    });
-    tooltip.addEventListener("mouseenter", function () {
-      if (openTooltip === tooltip) {
-        tooltip.style.display = "flex";
-        tooltip.style.visibility = "visible";
-        tooltip.style.opacity = "1";
-        tooltip.style.pointerEvents = "auto";
+      if (pinnedTrigger !== trigger) {
+        openTrigger(trigger, false);
       }
     });
+
+    trigger.addEventListener("mouseleave", function () {
+      hideTimer = window.setTimeout(function () {
+        if (
+          pinnedTrigger !== trigger &&
+          !trigger.matches(":hover") &&
+          !tooltip.matches(":hover")
+        ) {
+          closeTrigger(trigger, false);
+        }
+      }, 180);
+    });
+
+    tooltip.addEventListener("mouseenter", function () {
+      window.clearTimeout(hideTimer);
+    });
+
     tooltip.addEventListener("mouseleave", function () {
-      if (!tooltip.classList.contains("pinned")) closeTooltip(tooltip, trigger);
-    });
-    trigger.addEventListener("click", function (e) {
-      e.stopPropagation();
-      showTooltip(trigger, true);
+      hideTimer = window.setTimeout(function () {
+        if (
+          pinnedTrigger !== trigger &&
+          !trigger.matches(":hover") &&
+          !tooltip.matches(":hover")
+        ) {
+          closeTrigger(trigger, false);
+        }
+      }, 180);
     });
 
-    const infoBtn = tooltip.querySelector(".info-btn");
-    if (infoBtn) {
-      infoBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const stockNo = activeTrigger ? stockFromTrigger(activeTrigger) : stockFromTrigger(trigger);
+    trigger.addEventListener("click", function (event) {
+      if (
+        event.target.closest(".info-btn") ||
+        event.target.closest(".close-btn")
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (pinnedTrigger === trigger) {
+        closeTrigger(trigger, true);
+        return;
+      }
+
+      openTrigger(trigger, true);
+    });
+
+    const infoButton = tooltip.querySelector(".info-btn");
+    const closeButton = tooltip.querySelector(".close-btn");
+
+    if (infoButton) {
+      infoButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const stockNo = getStockNo(trigger);
         if (!stockNo) return;
-        window.location.href = "/adminportal/dp_visualaid/?plating_stk_no=" + encodeURIComponent(stockNo);
+
+        window.location.href = trigger.dataset.visualAidUrl || getDefaultVisualAidUrl(stockNo);
       });
     }
 
-    const closeBtn = tooltip.querySelector(".close-btn");
-    if (closeBtn) {
-      closeBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeTooltip(tooltip, trigger);
+    if (closeButton) {
+      closeButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeTrigger(trigger, true);
       });
     }
   });
 
-  document.addEventListener("click", function (e) {
-    if (openTooltip && !e.target.closest(".model-image-tooltip") && !e.target.closest(".model-hover-trigger")) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
+  document.addEventListener("click", function (event) {
+    if (
+      pinnedTrigger &&
+      !event.target.closest(".model-image-tooltip") &&
+      !event.target.closest(".model-hover-trigger")
+    ) {
+      closeTrigger(pinnedTrigger, true);
     }
   });
 
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && openTooltip) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && pinnedTrigger) {
+      closeTrigger(pinnedTrigger, true);
     }
   });
 });

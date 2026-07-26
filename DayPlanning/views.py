@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils.safestring import mark_safe
 from django.db.models import OuterRef, Subquery, Q
+from django.db.models.functions import Trim, Upper
 from django.db import transaction, IntegrityError
 from django.utils.timezone import now
 from django.http import JsonResponse
@@ -1368,7 +1369,11 @@ class GetLocationsAPIView(APIView):
     API endpoint to fetch all locations for dropdown
     
     GET /dayplanning/get_locations/
-    
+    GET /dayplanning/get_locations/?upload_type=recovery
+
+    Recovery uploads are sourced only from EPSF; Day Planning uploads must
+    never show EPSF as a source option.
+
     Response:
     {
         "success": true,
@@ -1378,12 +1383,20 @@ class GetLocationsAPIView(APIView):
         ]
     }
     """
-    
+
     def get(self, request):
         try:
             # Location model should already be imported
-            locations = list(Location.objects.values('location_name').order_by('location_name'))
-            
+            upload_type = request.GET.get('upload_type', 'day_planning')
+            queryset = Location.objects.annotate(
+                _normalized_name=Trim(Upper('location_name'))
+            )
+            if upload_type == 'recovery':
+                queryset = queryset.filter(_normalized_name='EPSF')
+            else:
+                queryset = queryset.exclude(_normalized_name='EPSF')
+            locations = list(queryset.values('location_name').order_by('location_name'))
+
             return JsonResponse({
                 'success': True,
                 'locations': locations,

@@ -2944,7 +2944,7 @@ class JigLoadInitAPI(APIView):
 			'original_capacity': jig_capacity,
 			'broken_hooks': broken_hooks,
 			'placeholders': {
-				'jig_id': f'Enter Jig ID (e.g. J{jig_capacity:03d}-0000)',
+				'jig_id': f'J{jig_capacity:03d}-0000',
 				'tray_scan': 'Scan or enter tray ID',
 			},
 			'effective_capacity': computed['effective_capacity'],
@@ -3478,7 +3478,7 @@ class JigLoadUpdateAPI(APIView):
 			'original_capacity': lot_data['jig_capacity'],
 			'broken_hooks': broken_hooks,
 			'placeholders': {
-				'jig_id': 'Enter Jig ID (e.g. J{:03d}-0000)'.format(int(lot_data.get('jig_capacity', 0) or 0)),
+				'jig_id': 'J{:03d}-0000'.format(int(lot_data.get('jig_capacity', 0) or 0)),
 				'tray_scan': 'Scan or enter tray ID',
 			},
 			'effective_capacity': computed['effective_capacity'],

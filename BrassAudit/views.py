@@ -1430,7 +1430,16 @@ def brass_audit_action(request):
             return JsonResponse({"valid": False, "error": "Tray ID not found in system"})
         if tray.lot_id and tray.lot_id != lot_id:
             return JsonResponse({"valid": False, "error": f"Tray belongs to lot {tray.lot_id}"})
-        
+
+        # ═══ BRASS QC REJECTION CHECK ═══
+        # A tray rejected during Brass QC must never be scanned/accepted here.
+        # Brass QC only records rejected trays inside its submission snapshots
+        # (no live rejected_tray flag), so check those snapshots explicitly.
+        from Brass_QC.services.validators import validate_tray_not_rejected_in_brass_qc
+        brass_qc_reject_error = validate_tray_not_rejected_in_brass_qc(tray_id)
+        if brass_qc_reject_error:
+            return JsonResponse({"valid": False, "error": brass_qc_reject_error})
+
         # ═══ TRAY TYPE COMPATIBILITY CHECK ═══
         # Verify scanned tray's type matches model's required type (Jumbo/Normal)
         if model_category:
@@ -1440,7 +1449,7 @@ def brass_audit_action(request):
                     "valid": False,
                     "error": f"Tray type mismatch: model requires {model_category} tray, but scanned tray is {tray_category}",
                 })
-        
+
         return JsonResponse({"valid": True})
 
     elif action == 'GET_REASONS':
@@ -2268,6 +2277,12 @@ def validate_audit_tray_id(request):
         return JsonResponse({"valid": False, "error": "Tray ID not found in system"})
     if tray.lot_id and tray.lot_id != lot_id:
         return JsonResponse({"valid": False, "error": f"Tray belongs to lot {tray.lot_id}"})
+
+    from Brass_QC.services.validators import validate_tray_not_rejected_in_brass_qc
+    brass_qc_reject_error = validate_tray_not_rejected_in_brass_qc(tray_id)
+    if brass_qc_reject_error:
+        return JsonResponse({"valid": False, "error": brass_qc_reject_error})
+
     return JsonResponse({"valid": True})
 
 

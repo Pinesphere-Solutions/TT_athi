@@ -1600,6 +1600,28 @@
   table-layout: auto;
 }
 
+
+.model-image-tooltip .img-gallery img,
+.model-preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.model-image-loading,
+.model-image-unavailable {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12px;
+  color: #777;
+  background: #fff;
+  border-radius: 6px;
+}
 </style>
 
 <div class="content-wrapper">
@@ -1782,7 +1804,7 @@
                           <!-- Image gallery section -->
                           <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="img-gallery" style="display: flex; justify-content:center; align-items:center; gap: 6px; overflow: hidden; width: 180px; height: 130px;">
-                              <span style="font-size:12px;color:#777;text-align:center;">Loading...</span>
+                              <div class="model-image-loading">Loading...</div>
                             </div>
                           </div>
                         </div>
@@ -5423,23 +5445,21 @@ document.addEventListener('click', function(evt){
 })();
 </script>
 
+<!-- Plating Stk - Image hover - fixed position while hitting the Plating Stk No -->
 <script nonce="{{ csp_nonce }}">
 document.addEventListener("DOMContentLoaded", function () {
   let openTooltip = null;
-  let activeTrigger = null;
-  let activeStockNo = "";
-  const previewCache = new Map();
+  const stockPreviewCache = Object.create(null);
 
-  function getStockNo(trigger) {
-    return (trigger && trigger.dataset ? trigger.dataset.platingStkNo : "").trim();
-  }
-
-  function normalizeImageUrl(rawUrl) {
+  function normalizeStockImageUrl(rawUrl) {
     const value = String(rawUrl || "").trim();
     if (!value) return "";
     try {
       const parsed = new URL(value, window.location.origin);
-      if (parsed.origin === window.location.origin) {
+      const hostname = String(parsed.hostname || "").toLowerCase();
+      const isLoopbackHost = hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1" || hostname === "[::1]";
+      const isApplicationAsset = parsed.pathname.startsWith("/media/") || parsed.pathname.startsWith("/static/");
+      if (parsed.origin === window.location.origin || (isLoopbackHost && isApplicationAsset)) {
         return parsed.pathname + parsed.search + parsed.hash;
       }
       return parsed.href;
@@ -5448,69 +5468,157 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  function setTooltipLoading(tooltip) {
-    const gallery = tooltip ? tooltip.querySelector(".img-gallery") : null;
-    if (!gallery) return;
-    gallery.innerHTML = '<span style="font-size:12px;color:#777;text-align:center;">Loading...</span>';
+  window.normalizeStockImageUrl = normalizeStockImageUrl;
+
+  function getStockNo(trigger) {
+    return String(trigger && trigger.dataset ? trigger.dataset.platingStkNo || "" : "").trim();
   }
 
-  function setTooltipMessage(tooltip, message) {
-    const gallery = tooltip ? tooltip.querySelector(".img-gallery") : null;
-    if (!gallery) return;
-    gallery.textContent = "";
-    const messageEl = document.createElement("span");
-    messageEl.textContent = message;
-    messageEl.style.cssText = "font-size:12px;color:#777;text-align:center;";
-    gallery.appendChild(messageEl);
+  function getStockCacheKey(stockNo) {
+    return String(stockNo || "").trim().toUpperCase();
   }
 
-  function renderPreviewImage(trigger, payload) {
+  function getDefaultVisualAidUrl(stockNo) {
+    return "/adminportal/dp_visualaid/?plating_stk_no=" + encodeURIComponent(stockNo);
+  }
+
+  function setTriggerVisualAidUrl(trigger, stockNo, data) {
+    if (!trigger || !stockNo) return;
+    trigger.dataset.visualAidUrl = data && data.visual_aid_url ? data.visual_aid_url : getDefaultVisualAidUrl(stockNo);
+  }
+
+  function getPreviewImageUrlFromEntry(entry) {
+    if (!entry) return "";
+    return entry.preview_image || entry.image_url || entry.url || entry.src || entry.image || "";
+  }
+
+  function getNoImageUrl(data) {
+    const images = Array.isArray(data && data.images) ? data.images : [];
+    const noImage = images.find(function (entry) {
+      const viewCode = String(entry && entry.view_code || "").toUpperCase();
+      return viewCode === "NO_IMAGE" || entry && entry.is_placeholder === true;
+    });
+    return normalizeStockImageUrl(getPreviewImageUrlFromEntry(noImage));
+  }
+
+  function resolveIqfPickPreviewImage(data) {
+    const previewImageUrl = normalizeStockImageUrl(data && data.preview_image);
+    const noImageUrl = getNoImageUrl(data);
+    if (previewImageUrl) {
+      return {
+        url: previewImageUrl,
+        view: data && data.preview_view ? data.preview_view : "Inside View",
+        fallbackUrl: noImageUrl
+      };
+    }
+
+    const images = Array.isArray(data && data.images) ? data.images : [];
+    const insideView = images.find(function (entry) {
+      return String(entry && entry.view_code || "").toUpperCase() === "IV";
+    });
+    const insideViewUrl = normalizeStockImageUrl(getPreviewImageUrlFromEntry(insideView));
+    if (insideViewUrl) {
+      return { url: insideViewUrl, view: "Inside View", fallbackUrl: noImageUrl };
+    }
+
+    if (noImageUrl) {
+      return { url: noImageUrl, view: "No Image", fallbackUrl: "" };
+    }
+
+    return null;
+  }
+
+  function renderImageUnavailableState(gallery) {
+    if (!gallery) return;
+    gallery.replaceChildren();
+    const unavailableText = document.createElement("div");
+    unavailableText.className = "model-image-unavailable";
+    unavailableText.textContent = "Image unavailable";
+    gallery.appendChild(unavailableText);
+  }
+
+  function renderImageLoadingState(gallery) {
+    if (!gallery) return;
+    gallery.replaceChildren();
+    const loadingText = document.createElement("div");
+    loadingText.className = "model-image-loading";
+    loadingText.textContent = "Loading...";
+    gallery.appendChild(loadingText);
+  }
+
+  function setTooltipPreview(trigger, imageUrl, viewText, fallbackImageUrl) {
     const tooltip = trigger ? trigger.querySelector(".model-image-tooltip") : null;
     const gallery = tooltip ? tooltip.querySelector(".img-gallery") : null;
     if (!gallery) return;
-    const imageUrl = normalizeImageUrl(payload && payload.preview_image);
-    if (!imageUrl) {
-      setTooltipMessage(tooltip, "Image unavailable");
+    const normalizedImageUrl = normalizeStockImageUrl(imageUrl);
+    const altText = String(viewText || "No Image");
+    if (altText === "Loading") {
+      renderImageLoadingState(gallery);
       return;
     }
-    gallery.textContent = "";
+    if (!normalizedImageUrl) {
+      renderImageUnavailableState(gallery);
+      return;
+    }
+    gallery.replaceChildren();
     const image = document.createElement("img");
-    image.src = imageUrl;
-    image.alt = "Model image";
+    image.src = normalizedImageUrl;
+    image.alt = altText;
     image.decoding = "async";
     image.loading = "lazy";
-    image.style.cssText =
-      "width:100%;height:100%;object-fit:contain;object-position:center;" +
-      "border-radius:6px;background:#fff;display:block;";
+    image.style.cssText = "width:120px;height:120px;object-fit:contain;object-position:center;display:block;";
+    let triedFallbackImage = false;
+    image.addEventListener("error", function () {
+      const normalizedFallbackUrl = normalizeStockImageUrl(fallbackImageUrl);
+      if (normalizedFallbackUrl && !triedFallbackImage) {
+        triedFallbackImage = true;
+        image.src = normalizedFallbackUrl;
+        image.alt = "No Image";
+        return;
+      }
+      renderImageUnavailableState(gallery);
+    });
     gallery.appendChild(image);
   }
 
   function loadStockPreview(trigger) {
     const stockNo = getStockNo(trigger);
-    const tooltip = trigger ? trigger.querySelector(".model-image-tooltip") : null;
-    if (!stockNo || !tooltip) return;
-    activeTrigger = trigger;
-    activeStockNo = stockNo;
-    if (previewCache.has(stockNo)) {
-      renderPreviewImage(trigger, previewCache.get(stockNo));
+    if (!stockNo) return;
+    const cacheKey = getStockCacheKey(stockNo);
+    setTriggerVisualAidUrl(trigger, stockNo);
+    if (stockPreviewCache[cacheKey]) {
+      const cached = stockPreviewCache[cacheKey];
+      setTriggerVisualAidUrl(trigger, stockNo, cached);
+      setTooltipPreview(trigger, cached.preview_image, cached.preview_view, cached.preview_fallback_image);
       return;
     }
-    setTooltipLoading(tooltip);
-    fetch("/adminportal/api/model-hover-preview/?stock_no=" + encodeURIComponent(stockNo), {
-      headers: {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"},
+    setTooltipPreview(trigger, "", "Loading");
+    const requestId = String(Date.now()) + Math.random().toString(36).slice(2);
+    trigger.dataset.stockPreviewRequestId = requestId;
+    const requestUrl = "/adminportal/api/model-hover-preview/?stock_no=" + encodeURIComponent(stockNo) + "&_ts=" + Date.now();
+    fetch(requestUrl, {
+      method: "GET",
+      credentials: "same-origin",
+      headers: { "Accept": "application/json", "X-Requested-With": "XMLHttpRequest" },
+      cache: "no-store"
     })
-      .then(function(response) {
-        if (!response.ok) throw new Error("HTTP " + response.status);
+      .then(function (response) {
+        if (!response.ok) throw new Error("Preview request failed");
         return response.json();
       })
-      .then(function(payload) {
-        previewCache.set(stockNo, payload);
-        if (activeTrigger !== trigger || activeStockNo !== stockNo) return;
-        renderPreviewImage(trigger, payload);
+      .then(function (data) {
+        if (trigger.dataset.stockPreviewRequestId !== requestId) return;
+        const resolvedImage = resolveIqfPickPreviewImage(data);
+        data.preview_image = resolvedImage ? resolvedImage.url : "";
+        data.preview_view = resolvedImage ? resolvedImage.view : data.preview_view;
+        data.preview_fallback_image = resolvedImage ? resolvedImage.fallbackUrl : getNoImageUrl(data);
+        stockPreviewCache[cacheKey] = data;
+        setTriggerVisualAidUrl(trigger, stockNo, data);
+        setTooltipPreview(trigger, data.preview_image, data.preview_view || "Model image", data.preview_fallback_image);
       })
-      .catch(function() {
-        if (activeTrigger !== trigger || activeStockNo !== stockNo) return;
-        setTooltipMessage(tooltip, "Image unavailable");
+      .catch(function () {
+        if (trigger.dataset.stockPreviewRequestId !== requestId) return;
+        setTooltipPreview(trigger, "", "Image unavailable");
       });
   }
 
@@ -5529,34 +5637,31 @@ document.addEventListener("DOMContentLoaded", function () {
       trigger.style.backgroundColor = "";
       trigger.style.borderRadius = "";
     }
-    openTooltip = null;
-    if (activeTrigger === trigger) {
-      activeTrigger = null;
-      activeStockNo = "";
-    }
+    if (openTooltip === tooltip) openTooltip = null;
   }
 
-  document.querySelectorAll(".model-hover-trigger").forEach(function(trigger) {
+  document.querySelectorAll(".model-hover-trigger").forEach(function (trigger) {
     const tooltip = trigger.querySelector(".model-image-tooltip");
     if (!tooltip) return;
     const infoBtn = tooltip.querySelector(".info-btn");
     const closeBtn = tooltip.querySelector(".close-btn");
     if (infoBtn) {
       infoBtn.style.display = "none";
-      infoBtn.addEventListener("click", function(e) {
+      infoBtn.addEventListener("click", function (e) {
         e.stopPropagation();
         const stockNo = getStockNo(trigger);
-        if (stockNo) window.location.href = "/adminportal/dp_visualaid/?plating_stk_no=" + encodeURIComponent(stockNo);
+        if (!stockNo) return;
+        window.location.href = trigger.dataset.visualAidUrl || getDefaultVisualAidUrl(stockNo);
       });
     }
     if (closeBtn) {
       closeBtn.style.display = "none";
-      closeBtn.addEventListener("click", function(e) {
+      closeBtn.addEventListener("click", function (e) {
         e.stopPropagation();
         closeTooltip(tooltip, trigger);
       });
     }
-    trigger.addEventListener("mouseenter", function() {
+    trigger.addEventListener("mouseenter", function () {
       if (tooltip.classList.contains("pinned")) return;
       loadStockPreview(trigger);
       tooltip.style.display = "flex";
@@ -5566,14 +5671,31 @@ document.addEventListener("DOMContentLoaded", function () {
       if (infoBtn) infoBtn.style.display = "block";
       if (closeBtn) closeBtn.style.display = "block";
     });
-    trigger.addEventListener("mouseleave", function() {
+    trigger.addEventListener("mouseleave", function () {
       if (tooltip.classList.contains("pinned")) return;
       tooltip.style.opacity = "0";
       tooltip.style.pointerEvents = "none";
       if (infoBtn) infoBtn.style.display = "none";
       if (closeBtn) closeBtn.style.display = "none";
     });
-    trigger.addEventListener("click", function(e) {
+    tooltip.addEventListener("mouseenter", function () {
+      if (!tooltip.classList.contains("pinned")) {
+        tooltip.style.display = "flex";
+        tooltip.style.visibility = "visible";
+      }
+      tooltip.style.opacity = "1";
+      tooltip.style.pointerEvents = "auto";
+      if (infoBtn) infoBtn.style.display = "block";
+      if (closeBtn) closeBtn.style.display = "block";
+    });
+    tooltip.addEventListener("mouseleave", function () {
+      if (tooltip.classList.contains("pinned")) return;
+      tooltip.style.opacity = "0";
+      tooltip.style.pointerEvents = "none";
+      if (infoBtn) infoBtn.style.display = "none";
+      if (closeBtn) closeBtn.style.display = "none";
+    });
+    trigger.addEventListener("click", function (e) {
       e.stopPropagation();
       if (openTooltip && openTooltip !== tooltip) {
         const prevTrigger = openTooltip.closest(".model-hover-trigger");
@@ -5591,15 +5713,16 @@ document.addEventListener("DOMContentLoaded", function () {
       trigger.style.backgroundColor = "#e3f2fd";
       trigger.style.borderRadius = "4px";
     });
-    tooltip.addEventListener("click", function(e) { e.stopPropagation(); });
+    tooltip.addEventListener("click", function (e) { e.stopPropagation(); });
   });
-  document.addEventListener("click", function(e) {
+
+  document.addEventListener("click", function (e) {
     if (openTooltip && !e.target.closest(".model-image-tooltip") && !e.target.closest(".model-hover-trigger")) {
       const openTrigger = openTooltip.closest(".model-hover-trigger");
       closeTooltip(openTooltip, openTrigger);
     }
   });
-  document.addEventListener("keydown", function(e) {
+  document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && openTooltip) {
       const openTrigger = openTooltip.closest(".model-hover-trigger");
       closeTooltip(openTooltip, openTrigger);
@@ -6365,7 +6488,5 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('[IQF] Global scan listener attached for auto-opening audit modal');
 });
 </script>
-
-<script src="{% static 'js/model_image_tooltip.js' %}"></script>
 
 {% endblock %} {% endblock content %}

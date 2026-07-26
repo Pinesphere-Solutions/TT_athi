@@ -17,7 +17,7 @@
 .model-image-tooltip{
   transform: translateX(-25%) !important;
   top: 45% !important;
-  z-index: 500000 !important; /* high so it sits above table & scrollbar */
+  z-index: 10010 !important; /* match Day Planning hover stacking */
 
 }
 
@@ -682,23 +682,8 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
 }
 
 
-.model-image-tooltip img,
-.model-image-tooltip .nickel-preview-img,
-.model-image-tooltip .model-preview-image{
-    border:none !important;
-    border-radius:0 !important;
-    box-shadow:none !important;
-    background:transparent !important;
-    outline:none !important;
-    filter:none !important;
-}
-.model-image-tooltip .image-container,
-.model-image-tooltip .preview-container,
-.model-image-tooltip .model-image-container{
-    border:none !important;
-    border-radius:0 !important;
-    box-shadow:none !important;
-    background:transparent !important;
+.model-hover-trigger {
+  position: relative !important;
 }
 
 </style>
@@ -710,11 +695,11 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
         <div class="card-body" style="padding-bottom:12px;">
           <div class="mb-4" style="position: relative;">
             <h5 class="text-left mt-0 mb-0 d-inline-block" style="font-weight:700;">Nickel Wiping Pick Table Zone II
-              <button type="button" class="btn btn-primary btn-sm ms-3" id="scanButton"
+             <!-- <button type="button" class="btn btn-primary btn-sm ms-3" id="scanButton"
                       style="background-color: #028084; border-color: #028084; font-weight: 600; vertical-align: middle;">
                 <i class="fa fa-qrcode" style="margin-right: 6px;"></i>
                 Scan
-              </button>
+              </button> -->
               <span id="scanStatusMessage" style="display: none; margin-left: 12px; vertical-align: middle; color: #28a745; font-size: 15px; font-weight: 700;">PLEASE SCAN</span>
             </h5>
             <input type="text" id="scanHiddenInput" style="position: absolute; left: -9999px; opacity: 0;" autocomplete="off" />
@@ -870,23 +855,14 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
         <td {% if data.nq_hold_lot %} class="row-inactive-blur" {% endif %}>
                       <span class="model-hover-trigger" data-plating-stk-no="{{ data.plating_stk_no }}" style="cursor: pointer; word-break: break-all;">
                         {{ data.plating_stk_no|highlight_plating_color|safe_html }}
-                        <div class="model-image-tooltip" style="position: absolute; left: 80%; top: 110%; transform: translateX(-50%); background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 18px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.2s; min-width: 220px;">
-                          
-                          <!-- Header with Info and Close buttons -->
-                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <button class="info-btn" style="background: #007bff; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
-                               Info
-                            </button>
-                            <button class="close-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;">
-                               Close
-                            </button>
+                        <div class="model-image-tooltip" style="position: absolute; left: 80%; top: 110%; transform: translateX(-50%); background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 18px; z-index: 10010; display: flex; align-items: center; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.2s;">
+                          <button class="close-btn" style="position:absolute; top:8px; right:8px;">Close</button>
+                          <button type="button" class="info-btn" style="position:absolute; top:8px; left:8px;">Info</button>
+                          <button class="img-scroll-left" style="display:none; background:none; border:none; font-size:20px; cursor:pointer;">&#8592;</button>
+                          <div class="img-gallery" style="display:flex; justify-content:center; align-items:center; gap:6px; overflow:hidden; width:180px; min-height:130px;">
+                            <span class="model-preview-loading" style="font-size:12px;color:#777;text-align:center;">Loading...</span>
                           </div>
-                          
-                          <!-- Image gallery section -->
-                          <div style="display: flex; align-items: center; gap: 8px;">
-                            <!-- Hide scroll buttons since only one image is shown -->
-                            <div class="img-gallery" style="display: flex; gap: 6px; overflow: hidden; width: 180px;"></div>
-                          </div>
+                          <button class="img-scroll-right" style="display:none; background:none; border:none; font-size:20px; cursor:pointer;">&#8594;</button>
                         </div>
                       </span>
                     </td>
@@ -1677,158 +1653,460 @@ document.addEventListener("DOMContentLoaded", function() {
 <!-- Plating Stk - Image hover - fixed position while hitting the Plating Stk No -->
 <script nonce="{{ csp_nonce }}">
 document.addEventListener("DOMContentLoaded", function () {
-  const previewCache = window.NickelModelPreviewCache || new Map();
-  window.NickelModelPreviewCache = previewCache;
-  let openTooltip = null;
-  let activeTrigger = null;
-  let activeStockNo = "";
+  "use strict";
 
-  function stockFromTrigger(trigger) {
-    return ((trigger && trigger.dataset.platingStkNo) || "").trim();
+  const triggers = Array.from(
+    document.querySelectorAll(".model-hover-trigger[data-plating-stk-no]")
+  );
+
+  if (!triggers.length) return;
+
+  const previewCache = window.NickelModelPreviewCache || new Map();
+  const requestCache = window.NickelModelPreviewRequestCache || new Map();
+
+  window.NickelModelPreviewCache = previewCache;
+  window.NickelModelPreviewRequestCache = requestCache;
+
+  let openTooltip = null;
+  let pinnedTrigger = null;
+  let hideTimer = null;
+
+  function normalizeImageUrl(rawUrl) {
+    const value = String(rawUrl || "").trim();
+    if (!value) return "";
+
+    try {
+      const parsed = new URL(value, window.location.origin);
+      const hostname = String(parsed.hostname || "").toLowerCase();
+      const isLoopbackHost =
+        hostname === "127.0.0.1" ||
+        hostname === "localhost" ||
+        hostname === "::1" ||
+        hostname === "[::1]";
+      const isApplicationAsset =
+        parsed.pathname.startsWith("/media/") ||
+        parsed.pathname.startsWith("/static/");
+
+      if (
+        parsed.origin === window.location.origin ||
+        (isLoopbackHost && isApplicationAsset)
+      ) {
+        return parsed.pathname + parsed.search + parsed.hash;
+      }
+
+      return parsed.href;
+    } catch (error) {
+      return value;
+    }
   }
 
-  function fetchPreview(stockNo) {
-    if (previewCache.has(stockNo)) {
-      return Promise.resolve(previewCache.get(stockNo));
+  function normalizePreviewPayload(payload) {
+    if (!payload) return null;
+    payload.preview_image = normalizeImageUrl(payload.preview_image);
+    if (Array.isArray(payload.images)) {
+      payload.images = payload.images.map(function (image) {
+        if (!image) return image;
+        return Object.assign({}, image, {
+          url: normalizeImageUrl(image.url || image.image_url || image.src || image.image || "")
+        });
+      });
     }
-    return fetch("/adminportal/api/model-hover-preview/?stock_no=" + encodeURIComponent(stockNo), {
-      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
-    })
-      .then(function (response) { return response.ok ? response.json() : null; })
-      .then(function (payload) {
-        previewCache.set(stockNo, payload);
-        return payload;
+    return payload;
+  }
+
+  function getPlaceholderImageUrl(payload) {
+    const images = Array.isArray(payload && payload.images) ? payload.images : [];
+    const placeholder = images.find(function (image) {
+      const viewCode = String(image && image.view_code || "").toUpperCase();
+      return viewCode === "NO_IMAGE" || image && image.is_placeholder === true;
+    });
+    return normalizeImageUrl(placeholder && (placeholder.url || placeholder.image_url || placeholder.src || placeholder.image));
+  }
+
+  window.normalizeStockImageUrl = normalizeImageUrl;
+  window.NickelNormalizeModelImageUrl = normalizeImageUrl;
+
+  function getStockNo(trigger) {
+    return String(
+      trigger && trigger.dataset
+        ? trigger.dataset.platingStkNo || ""
+        : ""
+    ).trim();
+  }
+
+  function getStockCacheKey(stockNo) {
+    return String(stockNo || "").trim().toUpperCase();
+  }
+
+  function getDefaultVisualAidUrl(stockNo) {
+    return "/adminportal/dp_visualaid/?plating_stk_no=" + encodeURIComponent(stockNo);
+  }
+
+  function setTriggerVisualAidUrl(trigger, stockNo, payload) {
+    if (!trigger || !stockNo) return;
+    trigger.dataset.visualAidUrl = payload && payload.visual_aid_url
+      ? payload.visual_aid_url
+      : getDefaultVisualAidUrl(stockNo);
+  }
+
+  function getTooltip(trigger) {
+    return trigger
+      ? trigger.querySelector(".model-image-tooltip")
+      : null;
+  }
+
+  function prepareTooltip(trigger) {
+    const tooltip = getTooltip(trigger);
+    if (!tooltip || tooltip.dataset.dynamicPreviewReady === "1") return;
+
+    tooltip.dataset.dynamicPreviewReady = "1";
+    tooltip.innerHTML =
+      '<button type="button" class="close-btn" style="position:absolute;top:8px;right:8px;">Close</button>' +
+      '<button type="button" class="info-btn" style="position:absolute;top:8px;left:8px;">Info</button>' +
+      '<button type="button" class="img-scroll-left" style="display:none;background:none;border:none;font-size:20px;cursor:pointer;">&#8592;</button>' +
+      '<div class="img-gallery" style="display:flex;justify-content:center;align-items:center;gap:6px;overflow:hidden;width:180px;min-height:130px;">' +
+        '<span class="model-preview-loading" style="font-size:12px;color:#777;text-align:center;">Loading...</span>' +
+      '</div>' +
+      '<button type="button" class="img-scroll-right" style="display:none;background:none;border:none;font-size:20px;cursor:pointer;">&#8594;</button>';
+  }
+
+  function getGallery(trigger) {
+    const tooltip = getTooltip(trigger);
+    return tooltip ? tooltip.querySelector(".img-gallery") : null;
+  }
+
+  function renderLoading(trigger) {
+    const gallery = getGallery(trigger);
+    if (!gallery) return;
+
+    gallery.innerHTML =
+      '<span class="model-preview-loading" style="font-size:12px;color:#777;text-align:center;">Loading...</span>';
+  }
+
+  function renderMessage(trigger, message) {
+    const gallery = getGallery(trigger);
+    if (!gallery) return;
+
+    gallery.textContent = "";
+
+    const span = document.createElement("span");
+    span.textContent = message;
+    span.style.cssText =
+      "font-size:12px;color:#777;text-align:center;padding:12px;";
+    gallery.appendChild(span);
+  }
+
+  function renderPreview(trigger, payload) {
+    const gallery = getGallery(trigger);
+    if (!gallery) return;
+
+    const rawUrl = payload && payload.preview_image;
+    const imageUrl = normalizeImageUrl(rawUrl);
+
+    if (!imageUrl) {
+      renderMessage(trigger, "Image unavailable");
+      return;
+    }
+
+    gallery.textContent = "";
+
+    const image = document.createElement("img");
+    image.className = "nickel-preview-img";
+    image.alt = payload && payload.is_placeholder
+      ? "No image available"
+      : "Model IV preview";
+    image.loading = "eager";
+    image.decoding = "async";
+    image.style.cssText =
+      "width:120px;height:120px;object-fit:contain;object-position:center;" +
+      "border-radius:6px;background:#fff;display:block;";
+
+    image.addEventListener("error", function () {
+      const placeholderUrl = getPlaceholderImageUrl(payload);
+      if (placeholderUrl && image.src !== placeholderUrl) {
+        image.src = placeholderUrl;
+        image.alt = "No image available";
+        return;
+      }
+      console.error(
+        "[Nickel Wiping Z2] Preview image failed:",
+        rawUrl,
+        "Normalized URL:",
+        imageUrl
+      );
+      renderMessage(trigger, "Image could not be loaded");
+    });
+
+    gallery.appendChild(image);
+    image.src = imageUrl;
+  }
+
+  function requestPreview(stockNo, cacheKey) {
+    if (previewCache.has(cacheKey)) {
+      return Promise.resolve(previewCache.get(cacheKey));
+    }
+
+    if (requestCache.has(cacheKey)) {
+      return requestCache.get(cacheKey);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(function () {
+      controller.abort();
+    }, 10000);
+
+    const request = fetch(
+      "/adminportal/api/model-hover-preview/?stock_no=" +
+        encodeURIComponent(stockNo) +
+        "&_ts=" +
+        Date.now(),
+      {
+        headers: {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: controller.signal
+      }
+    )
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
       })
-      .catch(function () {
-        previewCache.set(stockNo, null);
-        return null;
+      .then(function (payload) {
+        const normalizedPayload = normalizePreviewPayload(payload);
+        previewCache.set(cacheKey, normalizedPayload);
+        return normalizedPayload;
+      })
+      .finally(function () {
+        window.clearTimeout(timeoutId);
+        requestCache.delete(cacheKey);
+      });
+
+    requestCache.set(cacheKey, request);
+    return request;
+  }
+
+  function loadPreview(trigger) {
+    const stockNo = getStockNo(trigger);
+    const cacheKey = getStockCacheKey(stockNo);
+
+    if (!stockNo) {
+      renderMessage(trigger, "Stock number unavailable");
+      return;
+    }
+
+    setTriggerVisualAidUrl(trigger, stockNo);
+
+    if (previewCache.has(cacheKey)) {
+      const cached = previewCache.get(cacheKey);
+      setTriggerVisualAidUrl(trigger, stockNo, cached);
+      renderPreview(trigger, cached);
+      return;
+    }
+
+    renderLoading(trigger);
+
+    requestPreview(stockNo, cacheKey)
+      .then(function (payload) {
+        setTriggerVisualAidUrl(trigger, stockNo, payload);
+        renderPreview(trigger, payload);
+      })
+      .catch(function (error) {
+        console.error(
+          "[Nickel Wiping Z2] Preview request failed:",
+          stockNo,
+          error
+        );
+
+        if (error && error.name === "AbortError") {
+          renderMessage(trigger, "Image request timed out");
+        } else {
+          renderMessage(trigger, "Image unavailable");
+        }
       });
   }
 
-  function prepareTooltip(tooltip) {
-    if (!tooltip || tooltip.dataset.previewReady === "1") return;
-    tooltip.dataset.previewReady = "1";
-    tooltip.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;">' +
-        '<button type="button" class="info-btn" style="background:#007bff;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">Info</button>' +
-        '<button type="button" class="close-btn" style="background:#dc3545;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;">Close</button>' +
-      '</div>' +
-      '<div style="display:flex;align-items:center;justify-content:center;width:180px;height:150px;border:none;border-radius:0;background:transparent;box-shadow:none;">' +
-        '<img class="nickel-preview-img" src="" alt="Model preview" style="width:100%;height:100%;object-fit:contain;object-position:center;border:none;border-radius:0;box-shadow:none;background:transparent;outline:none;" loading="lazy" />' +
-      '</div>';
-  }
-
-  function closeTooltip(tooltip, trigger) {
+  function positionTooltip(trigger) {
+    const tooltip = getTooltip(trigger);
     if (!tooltip) return;
-    tooltip.classList.remove("pinned");
-    tooltip.style.opacity = "0";
-    tooltip.style.pointerEvents = "none";
-    tooltip.style.visibility = "hidden";
-    tooltip.style.display = "none";
-    if (trigger) {
-      trigger.style.backgroundColor = "";
-      trigger.style.borderRadius = "";
+
+    tooltip.style.left = "80%";
+    tooltip.style.right = "auto";
+    tooltip.style.top = "110%";
+    tooltip.style.transform = "translateX(-50%)";
+
+    const rect = tooltip.getBoundingClientRect();
+
+    if (rect.right > window.innerWidth - 8) {
+      tooltip.style.left = "auto";
+      tooltip.style.right = "0";
+      tooltip.style.transform = "none";
     }
-    if (openTooltip === tooltip) {
-      openTooltip = null;
-      activeTrigger = null;
-      activeStockNo = "";
+
+    if (rect.left < 8) {
+      tooltip.style.left = "0";
+      tooltip.style.right = "auto";
+      tooltip.style.transform = "none";
     }
   }
 
-  function renderPreview(trigger, stockNo, payload) {
-    if (activeTrigger !== trigger || activeStockNo !== stockNo) return;
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    const img = tooltip ? tooltip.querySelector(".nickel-preview-img") : null;
-    if (img && payload && payload.preview_image) {
-      img.src = payload.preview_image;
-    } else if (img) {
-      img.removeAttribute("src");
+  function closeTrigger(trigger, force) {
+    if (!trigger) return;
+    if (!force && pinnedTrigger === trigger) return;
+
+    const tooltip = getTooltip(trigger);
+
+    if (tooltip) {
+      tooltip.classList.remove("pinned");
+      tooltip.style.opacity = "0";
+      tooltip.style.visibility = "hidden";
+      tooltip.style.pointerEvents = "none";
+      tooltip.style.display = "none";
     }
+
+    trigger.style.backgroundColor = "";
+    trigger.style.borderRadius = "";
+
+    if (openTooltip === tooltip) openTooltip = null;
+    if (force && pinnedTrigger === trigger) pinnedTrigger = null;
   }
 
-  function showTooltip(trigger, pinned) {
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    const stockNo = stockFromTrigger(trigger);
-    if (!tooltip || !stockNo) return;
-    if (openTooltip && openTooltip !== tooltip) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
-    }
-    activeTrigger = trigger;
-    activeStockNo = stockNo;
+  function closeOthers(currentTrigger) {
+    triggers.forEach(function (trigger) {
+      if (trigger !== currentTrigger) {
+        closeTrigger(trigger, true);
+      }
+    });
+  }
+
+  function openTrigger(trigger, pin) {
+    window.clearTimeout(hideTimer);
+    closeOthers(trigger);
+    prepareTooltip(trigger);
+
+    const tooltip = getTooltip(trigger);
+    if (!tooltip) return;
+
     openTooltip = tooltip;
-    prepareTooltip(tooltip);
+
     tooltip.style.display = "flex";
     tooltip.style.visibility = "visible";
     tooltip.style.opacity = "1";
     tooltip.style.pointerEvents = "auto";
-    if (pinned) {
+
+    if (pin) {
+      pinnedTrigger = trigger;
       tooltip.classList.add("pinned");
       trigger.style.backgroundColor = "#e3f2fd";
       trigger.style.borderRadius = "4px";
     }
-    fetchPreview(stockNo).then(function (payload) {
-      renderPreview(trigger, stockNo, payload);
-    });
+
+    positionTooltip(trigger);
+    loadPreview(trigger);
   }
 
-  document.querySelectorAll(".model-hover-trigger").forEach(function (trigger) {
-    const tooltip = trigger.querySelector(".model-image-tooltip");
-    if (!tooltip) return;
-    prepareTooltip(tooltip);
+  triggers.forEach(function (trigger) {
+    prepareTooltip(trigger);
+
+    const tooltip = getTooltip(trigger);
+    if (!tooltip || trigger.dataset.nickelZ2HoverBound === "1") return;
+
+    trigger.dataset.nickelZ2HoverBound = "1";
 
     trigger.addEventListener("mouseenter", function () {
-      if (!tooltip.classList.contains("pinned")) showTooltip(trigger, false);
-    });
-    trigger.addEventListener("mouseleave", function () {
-      if (!tooltip.classList.contains("pinned")) closeTooltip(tooltip, trigger);
-    });
-    tooltip.addEventListener("mouseenter", function () {
-      if (openTooltip === tooltip) {
-        tooltip.style.display = "flex";
-        tooltip.style.visibility = "visible";
-        tooltip.style.opacity = "1";
-        tooltip.style.pointerEvents = "auto";
+      if (pinnedTrigger !== trigger) {
+        openTrigger(trigger, false);
       }
     });
+
+    trigger.addEventListener("mouseleave", function () {
+      hideTimer = window.setTimeout(function () {
+        if (
+          pinnedTrigger !== trigger &&
+          !trigger.matches(":hover") &&
+          !tooltip.matches(":hover")
+        ) {
+          closeTrigger(trigger, false);
+        }
+      }, 180);
+    });
+
+    tooltip.addEventListener("mouseenter", function () {
+      window.clearTimeout(hideTimer);
+    });
+
     tooltip.addEventListener("mouseleave", function () {
-      if (!tooltip.classList.contains("pinned")) closeTooltip(tooltip, trigger);
-    });
-    trigger.addEventListener("click", function (e) {
-      e.stopPropagation();
-      showTooltip(trigger, true);
+      hideTimer = window.setTimeout(function () {
+        if (
+          pinnedTrigger !== trigger &&
+          !trigger.matches(":hover") &&
+          !tooltip.matches(":hover")
+        ) {
+          closeTrigger(trigger, false);
+        }
+      }, 180);
     });
 
-    const infoBtn = tooltip.querySelector(".info-btn");
-    if (infoBtn) {
-      infoBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const stockNo = activeTrigger ? stockFromTrigger(activeTrigger) : stockFromTrigger(trigger);
+    trigger.addEventListener("click", function (event) {
+      if (
+        event.target.closest(".info-btn") ||
+        event.target.closest(".close-btn")
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (pinnedTrigger === trigger) {
+        closeTrigger(trigger, true);
+        return;
+      }
+
+      openTrigger(trigger, true);
+    });
+
+    const infoButton = tooltip.querySelector(".info-btn");
+    const closeButton = tooltip.querySelector(".close-btn");
+
+    if (infoButton) {
+      infoButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const stockNo = getStockNo(trigger);
         if (!stockNo) return;
-        window.location.href = "/adminportal/dp_visualaid/?plating_stk_no=" + encodeURIComponent(stockNo);
+
+        window.location.href = trigger.dataset.visualAidUrl || getDefaultVisualAidUrl(stockNo);
       });
     }
 
-    const closeBtn = tooltip.querySelector(".close-btn");
-    if (closeBtn) {
-      closeBtn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeTooltip(tooltip, trigger);
+    if (closeButton) {
+      closeButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeTrigger(trigger, true);
       });
     }
   });
 
-  document.addEventListener("click", function (e) {
-    if (openTooltip && !e.target.closest(".model-image-tooltip") && !e.target.closest(".model-hover-trigger")) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
+  document.addEventListener("click", function (event) {
+    if (
+      pinnedTrigger &&
+      !event.target.closest(".model-image-tooltip") &&
+      !event.target.closest(".model-hover-trigger")
+    ) {
+      closeTrigger(pinnedTrigger, true);
     }
   });
 
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && openTooltip) {
-      closeTooltip(openTooltip, openTooltip.closest(".model-hover-trigger"));
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && pinnedTrigger) {
+      closeTrigger(pinnedTrigger, true);
     }
   });
 });
@@ -1999,11 +2277,82 @@ document.addEventListener("DOMContentLoaded", function () {
       if (e.target === viewModal) closeViewModal();
     });
 
+    /* IV-only model image for the modal header — reuses the shared hover-preview
+       endpoint/cache/normalizer so the eye icon follows the same image selection. */
+    var modalImgEl = document.getElementById('modalUserImg_DayPlanning');
+    var modalImgDefaultSrc = modalImgEl ? modalImgEl.getAttribute('src') : '';
+
+    function resetModalModelImage() {
+      if (!modalImgEl) return;
+      modalImgEl.onerror = null;
+      modalImgEl.src = modalImgDefaultSrc;
+      modalImgEl.alt = 'Model Image';
+    }
+
+    function applyModalModelImagePayload(payload) {
+      if (!modalImgEl) return;
+      var normalize = window.NickelNormalizeModelImageUrl || window.normalizeStockImageUrl || function (u) { return u || ''; };
+      var url = normalize(payload && payload.preview_image);
+      if (!url && payload && Array.isArray(payload.images)) {
+        var insideView = payload.images.find(function (image) {
+          return String(image && image.view_code || '').toUpperCase() === 'IV';
+        });
+        url = normalize(insideView && (insideView.url || insideView.image_url || insideView.src || insideView.image));
+      }
+      if (!url && payload && Array.isArray(payload.images)) {
+        var noImage = payload.images.find(function (image) {
+          var viewCode = String(image && image.view_code || '').toUpperCase();
+          return viewCode === 'NO_IMAGE' || image && image.is_placeholder === true;
+        });
+        url = normalize(noImage && (noImage.url || noImage.image_url || noImage.src || noImage.image));
+      }
+      if (!url) { resetModalModelImage(); return; }
+      modalImgEl.onerror = function () {
+        modalImgEl.onerror = null;
+        resetModalModelImage();
+      };
+      modalImgEl.alt = (payload && (payload.is_placeholder || payload.is_fallback))
+        ? 'No image available'
+        : 'Model IV preview';
+      modalImgEl.src = url;
+    }
+
+    function renderModalModelImage(stockNo) {
+      if (!modalImgEl) return;
+      if (!stockNo) { resetModalModelImage(); return; }
+
+      var cache = window.NickelModelPreviewCache;
+      var cacheKey = String(stockNo || '').trim().toUpperCase();
+      if (cache instanceof Map && cache.has(cacheKey)) {
+        applyModalModelImagePayload(cache.get(cacheKey));
+        return;
+      }
+
+      fetch('/adminportal/api/model-hover-preview/?stock_no=' + encodeURIComponent(stockNo) + '&_ts=' + Date.now(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('Request failed')); })
+        .then(function (payload) {
+          if (cache instanceof Map) cache.set(cacheKey, payload);
+          applyModalModelImagePayload(payload);
+        })
+        .catch(function () {
+          resetModalModelImage();
+        });
+    }
+
     document.querySelectorAll('.tray-scan-btn-BQ-view').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         var lotId = btn.dataset.stockLotId || '';
         var modelNo = btn.dataset.modelNo || '';
+        var stockNo = btn.dataset.platingStkNo || '';
         var totalQty = btn.dataset.totalBatchQuantity || '0';
         var missingQty = btn.dataset.brassMissingQty || '0';
         var physQty = (parseInt(totalQty, 10) || 0) - (parseInt(missingQty, 10) || 0);
@@ -2016,6 +2365,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (elLotQty) elLotQty.textContent = totalQty;
         if (elMisQty) elMisQty.textContent = missingQty;
         if (elPhysQty) elPhysQty.textContent = physQty;
+
+        resetModalModelImage();
+        renderModalModelImage(stockNo);
 
         if (viewDetails) viewDetails.innerHTML = '<span style="color:#888;font-size:13px;">Loading tray data...</span>';
         if (viewModal) viewModal.classList.add('open');
