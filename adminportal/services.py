@@ -25,7 +25,10 @@ USER_GROUP_NAMES_CACHE_TTL = 300
 # process via DatabaseCache (see CACHES['permissions'] in settings.py) — the
 # 'default' LocMemCache is per-process and would let one worker's
 # invalidate_user_modules_cache() call go unseen by the others.
-_permissions_cache = caches['permissions']
+try:
+    _permissions_cache = caches['permissions']
+except Exception:
+    _permissions_cache = cache
 MODULE_REGISTRY_CACHE_KEY = 'adminportal_module_registry_seeded_v4'
 MODULE_REGISTRY_NAMES = [entry['name'] for entry in MODULE_REGISTRY]
 
@@ -313,6 +316,23 @@ def get_active_shortcut_configurations():
     )
     elapsed_ms = (time.time() - t0) * 1000
     logger.debug('shortcuts DB query: %.2fms rows=%d', elapsed_ms, len(raw))
+
+    if not raw:
+        from .management.commands.sync_shortcuts import CANONICAL_SHORTCUTS
+
+        logger.warning(
+            'No active ShortcutConfiguration rows found; serving canonical shortcut defaults.'
+        )
+        shortcuts = [
+            {
+                field: shortcut.get(field, '' if field in {'description', 'target_selector', 'fallback_selector'} else [])
+                for field in _SHORTCUT_VALUES_FIELDS
+            }
+            for shortcut in CANONICAL_SHORTCUTS
+            if shortcut.get('is_active', True)
+        ]
+        cache.set(SHORTCUT_CACHE_KEY, shortcuts, timeout=SHORTCUT_CACHE_TTL)
+        return shortcuts
 
     # Normalise None values that blank=True fields can return.
     shortcuts = [
