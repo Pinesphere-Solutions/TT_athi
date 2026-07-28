@@ -874,7 +874,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                               data-bs-toggle="tooltip" data-placement="right"
                               data-bs-original-title="{% if data.na_holding_reason %}Holding Reason: {{ data.na_holding_reason }} (by {{ data.na_hold_by }} on {{ data.na_hold_at }}){% endif %}{% if data.na_holding_reason and data.na_release_reason %}&#10;{% endif %}{% if data.na_release_reason %}Release Reason: {{ data.na_release_reason }} (by {{ data.na_release_by }} on {{ data.na_release_at }}){% endif %}">
                           {% if data.na_hold_lot or data.na_release_lot or data.na_holding_reason or data.na_release_reason %}
-                            <img src="{% static 'assets/icons/view2.png' %}" alt="Remark" style="width:12px; height:12px;" />
+                            <img src="{% static 'assets/icons/viewRemarks.png' %}" alt="Remark" style="width:12px; height:12px;" />
                           {% endif %}
                         </span>
                       {% else %}
@@ -884,7 +884,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                                 style="display:inline-block; cursor:pointer;"
                                 data-bs-toggle="tooltip" data-placement="right"
                                 data-bs-original-title="{% if data.na_holding_reason %}Holding Reason: {{ data.na_holding_reason }} (by {{ data.na_hold_by }} on {{ data.na_hold_at }}){% endif %}{% if data.na_holding_reason and data.na_release_reason %}&#10;{% endif %}{% if data.na_release_reason %}Release Reason: {{ data.na_release_reason }} (by {{ data.na_release_by }} on {{ data.na_release_at }}){% endif %}">
-                            <img src="{% static 'assets/icons/view2.png' %}" alt="View Reason" style="width:18px; height:18px;" />
+                            <img src="{% static 'assets/icons/viewRemarks.png' %}" alt="View Reason" style="width:18px; height:18px;" />
                           </span>
                         {% endif %}
                       {% endif %}
@@ -3260,11 +3260,12 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       saveBtn.disabled = true;
+      var holdCsrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
       fetch('/nickel_audit/api/hold-unhold/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': '{{ csrf_token }}'
+          'X-CSRFToken': holdCsrf
         },
         body: JSON.stringify({
           lot_id: state.lotId,

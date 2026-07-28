@@ -1942,10 +1942,6 @@ class JU_Zone_MainTable(LoginRequiredMixin, TemplateView):
                     has_draft = True
                     print(f"✅ Zone 2 - DRAFT MATCH in main lot_id: {jig_detail.lot_id}")
             
-            # Set BOTH flags to ensure template works
-            jig_detail.has_unload_draft = has_draft
-            jig_detail.jig_unload_draft = has_draft
-            
             # Compute all_models_submitted_z1 for View icon
             _all_lids_z1 = set(zone2_lot_quantities.keys()) or {jig_detail.lot_id}
             _submitted_z1 = set(
@@ -1953,6 +1949,23 @@ class JU_Zone_MainTable(LoginRequiredMixin, TemplateView):
                 .values_list('lot_id', flat=True)
             )
             jig_detail.all_models_submitted_z1 = _all_lids_z1.issubset(_submitted_z1) and len(_submitted_z1) > 0
+
+            # Draft indicator: any JUSubmittedZ1 draft record for this jig (created
+            # by the "Draft" button in the tray-scan modal) also counts as a draft,
+            # not just the legacy JigUnloadDraft table checked above. Without this,
+            # a model saved as Draft here never flips jig_unload_draft to True, so
+            # the row falls through to "Pending"/"Already Loaded" with no way back
+            # into the draft via the row-level Resume button.
+            if not has_draft and not jig_detail.all_models_submitted_z1:
+                _has_draft_z1_row = JUSubmittedZ1.objects.filter(
+                    jig_completed_id=jig_detail.id, is_draft=True
+                ).exists()
+                if _has_draft_z1_row:
+                    has_draft = True
+                    print(f"✅ Zone 2 - DRAFT MATCH in JUSubmittedZ1.is_draft for jig {getattr(jig_detail, 'jig_id', jig_detail.lot_id)}")
+
+            jig_detail.has_unload_draft = has_draft
+            jig_detail.jig_unload_draft = has_draft
 
             # Already Loaded: ALL of this jig's own lots were consumed into
             # ANOTHER jig's unload via Add Model — nothing left here to unload,

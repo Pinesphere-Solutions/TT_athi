@@ -1821,20 +1821,19 @@ body.add-model-mode #selectAllCheckbox {
                           background: linear-gradient(to right, #0c8249 0 50%, #ccc 50% 100%);
                           color: #fff;
                           border-radius: 50%;
-                          width: 20px;
-                          height: 20px;
+                          width: 24px;
+                          height: 24px;
                           display: flex;
                           align-items: center;
                           justify-content: center;
                           font-weight: 500;
-                          line-height: 20px;
+                          font-size: 11px;
+                          line-height: 24px;
                           text-align: center;
-                          padding-top: 1px;
-                          padding-right: 1px;
-                          padding: 15px !important;
+                          padding: 0;
                         ">UL</div>
                       {% else %}
-                        <div style="background:#ccc;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:12px;padding:0;">UL</div>
+                        <div style="background:#ccc;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;padding:0;">UL</div>
                       {% endif %}
                     </td>
 
@@ -2274,6 +2273,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const tr = document.createElement('tr');
       tr.style.borderBottom = '1px solid #f0f4f5';
       tr.style.background = idx % 2 === 0 ? '#ffffff' : '#fafcfc';
+      tr.style.height = '46px';
 
       // Status: Already Loaded > Done > Draft > Pending
       let statusHtml, actionHtml;
@@ -2313,20 +2313,20 @@ document.addEventListener('DOMContentLoaded', function() {
       var modelColBg = removeMode ? '#fff8e1' : 'transparent';
 
       tr.innerHTML =
-        '<td style="padding:9px 12px;font-size:12px;color:#1a2e3b;font-weight:500;background:' + modelColBg + ';">' +
+        '<td style="padding:9px 12px;font-size:12px;color:#1a2e3b;font-weight:500;background:' + modelColBg + ';vertical-align:middle;">' +
           '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + trayColorBg(m.tray_color) + ';margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,0.12);"></span>' +
           escHtml(m.model_no) + removeBtnHtml +
           (m.merged_info ? '<div style="font-size:9px;color:#1565c0;margin-top:2px;font-style:italic;"><i class="fa fa-info-circle" style="margin-right:2px;"></i>' + escHtml(m.merged_info) + '</div>' : '') +
         '</td>' +
-        '<td style="padding:9px 12px;font-size:11px;color:#455a64;">' + escHtml(m.plating_color_name || '\u2014') + '</td>' +
-        '<td style="padding:9px 12px;font-size:11px;color:#78909c;">' + escHtml(getDisplayJigId(m) || '\u2014') + '</td>' +
-        '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#e65100;font-weight:600;">' + m.qty + '</td>' +
-        '<td style="padding:9px 12px;text-align:center;">' +
+        '<td style="padding:9px 12px;font-size:11px;color:#455a64;vertical-align:middle;">' + escHtml(m.plating_color_name || '\u2014') + '</td>' +
+        '<td style="padding:9px 12px;font-size:11px;color:#78909c;vertical-align:middle;">' + escHtml(getDisplayJigId(m) || '\u2014') + '</td>' +
+        '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#e65100;font-weight:600;vertical-align:middle;">' + m.qty + '</td>' +
+        '<td style="padding:9px 12px;text-align:center;vertical-align:middle;">' +
           '<span style="background:' + trayColorBg(m.tray_color) + ';color:#fff;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:500;letter-spacing:0.3px;">' +
           escHtml(m.tray_code) + ' &bull; ' + m.tray_capacity + '</span>' +
         '</td>' +
-        '<td style="padding:9px 12px;text-align:center;">' + statusHtml + '</td>' +
-        '<td style="padding:9px 12px;text-align:center;">' + actionHtml + '</td>';
+        '<td style="padding:9px 12px;text-align:center;vertical-align:middle;">' + statusHtml + '</td>' +
+        '<td style="padding:9px 12px;text-align:center;vertical-align:middle;">' + actionHtml + '</td>';
       tbody.appendChild(tr);
     });
 
@@ -2416,15 +2416,48 @@ document.addEventListener('DOMContentLoaded', function() {
       var cap = m.tray_capacity > 0 ? m.tray_capacity : 20;
       var numTrays = m.qty > 0 ? Math.ceil(m.qty / cap) : 1;
       var remainder = m.qty > 0 ? (m.qty % cap === 0 ? cap : m.qty % cap) : 0;
+      var oldSlots = m.tray_slots || [];
       var newSlots = [];
       for (var i = 0; i < numTrays; i++) {
-        newSlots.push({ slot: i + 1, tray_id: '', qty: i === 0 ? remainder : cap, is_top_tray: i === 0, editable_qty: i === 0 });
+        var isPreExisting = i < oldSlots.length;
+        newSlots.push({
+          slot: i + 1,
+          tray_id: isPreExisting ? (oldSlots[i].tray_id || '') : '',
+          qty: i === 0 ? remainder : cap,
+          is_top_tray: i === 0,
+          editable_qty: i === 0
+        });
       }
       m.tray_slots = newSlots;
       m.num_trays = newSlots.length;
       m.merged_info = keep.length > 0
         ? keep.map(function(ml) { return '+' + ml.qty + ' from ' + ml.lot_id; }).join('; ')
         : '';
+
+      // Persist the corrected total_qty/tray_data/merged_lots immediately —
+      // without this, the model's JUSubmittedZ1 record still holds the old
+      // combined qty and stale source_metadata, so the removal silently
+      // reverts the next time this list is reloaded from the server.
+      fetch(`${API_BASE}/save_model_unload_z1/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({
+          jig_completed_id: m.jig_completed_id,
+          lot_id: m.lot_id,
+          model_no: m.model_no,
+          tray_data: m.tray_slots,
+          total_qty: m.qty,
+          missing_qty: 0,
+          top_tray_remark: m.top_tray_remark || '',
+          tray_type: m.tray_type,
+          tray_capacity: m.tray_capacity,
+          tray_code: m.tray_code,
+          tray_color: m.tray_color,
+          is_draft: true,
+          merged_lots: m.merged_lots,
+          lot_qty_edited: !!m.lot_qty_edited,
+        }),
+      }).catch(function(err) { console.error('save_model_unload_z1 (remove-merge sync) failed:', err); });
     }
     renderModelTable(models, currentModelsData.all_unloaded);
   }
@@ -3293,11 +3326,21 @@ document.addEventListener('DOMContentLoaded', function() {
         rowPlatingStk.split(',').some(function(p) { return p.trim() === currentModel; });
       const isSameModel = platingMatch || modelList.indexOf(currentModel) >= 0;
       if (!isSameModel) return;
-      // Estimate qty from lot_id_quantities
+      // Qty for THIS model only — a candidate jig may hold multiple models,
+      // so summing every lot_id_quantities entry on the row (regardless of
+      // model) overstates the qty this Add Model action will actually merge
+      // in (the backend only merges the lot(s) matching currentModel). Use
+      // lot_id_model_map (lot_id -> model_no) to filter to matching lots only,
+      // so the preview here always matches what get_unload_models_z1 merges.
       let totalQty = 0;
       try {
         const lotQtys = JSON.parse(row.dataset.lotIdQuantities || '{}');
-        Object.values(lotQtys).forEach(function(q) { totalQty += (parseInt(q) || 0); });
+        const lotModelMap = JSON.parse(row.dataset.lotIdModelMap || '{}');
+        const hasModelMap = Object.keys(lotModelMap).length > 0;
+        Object.keys(lotQtys).forEach(function(lotId) {
+          if (hasModelMap && lotModelMap[lotId] !== currentModel) return;
+          totalQty += (parseInt(lotQtys[lotId]) || 0);
+        });
       } catch(e) {}
       const jigQrId = (row.dataset.jigQrId || row.dataset.jigLotId || jcId).trim();
       const hasDraft = row.dataset.hasDraft === 'true';

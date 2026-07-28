@@ -2918,6 +2918,33 @@ class GetUnloadModelsZ1View(APIView):
         # ---------------------------------------------------------------
         # STEP 3: Build model list
         # ---------------------------------------------------------------
+        # Pre-resolve each lot's model_no so STEP 3b below knows which lots
+        # will later be ditto-merged in STEP 3c (two+ lots sharing the same
+        # plating_stk_no, physically present together on this one jig). This
+        # must happen BEFORE the main loop, not per-iteration, since a lot
+        # processed first doesn't yet know a later lot shares its model.
+        _lot_model_no_map = {}
+        for _lid, _hint, _q in lot_entries:
+            if _q == 0:
+                continue
+            _mmc_peek = self._resolve_lot_id_to_model_z1(_lid)
+            _lot_model_no_map[_lid] = (
+                getattr(_mmc_peek, 'plating_stk_no', None) or ''
+                if _mmc_peek else (_hint or draft_data.get('plating_stock_num', _lid))
+            )
+        _model_no_counts = {}
+        for _mno in _lot_model_no_map.values():
+            _model_no_counts[_mno] = _model_no_counts.get(_mno, 0) + 1
+        # First lot_id seen for each model_no becomes that ditto-group's
+        # "primary" — matching STEP 3c's own _by_model_no grouping below,
+        # which likewise keeps the first-seen entry as the merge target.
+        _primary_lot_for_model = {}
+        for _lid, _hint, _q in lot_entries:
+            if _q == 0:
+                continue
+            _mno = _lot_model_no_map.get(_lid)
+            _primary_lot_for_model.setdefault(_mno, _lid)
+
         models_list = []
         for lot_id, model_hint, qty in lot_entries:
             if qty == 0:
@@ -2952,13 +2979,32 @@ class GetUnloadModelsZ1View(APIView):
             #   - User-edited LOT Qty (if lot_qty_edited=True)
             #   - Add-Model merged qty
             # This ensures edited LOT Qty becomes the single source of truth.
+            #
+            # EXCEPTION: when this lot will be ditto-merged in STEP 3c below
+            # (another lot on this same jig shares its model_no), only the
+            # ditto-group's PRIMARY lot (first one seen) may take this
+            # override — its total_qty is always saved as the group's full
+            # combined total (native ditto amount, plus any Add-Model amount
+            # merged in since). Applying the same override to the SECONDARY
+            # lot(s) too double-counts them: STEP 3c would then add the
+            # secondary's own native share on top of a primary total that
+            # already includes it (144 -> 188 -> 232 -> ... on every reopen).
+            # So secondary lots always fall back to their true per-lot
+            # physical amount here, and STEP 3c (guarded by
+            # `_qty_locked_by_override` below) skips re-adding it to a
+            # primary whose total already accounts for it.
             # ---------------------------------------------------------------
+            _model_no_for_lot = _lot_model_no_map.get(lot_id)
+            _will_be_ditto_merged = _model_no_counts.get(_model_no_for_lot, 0) > 1
+            _is_ditto_primary = _primary_lot_for_model.get(_model_no_for_lot) == lot_id
             _submitted_rec = JUSubmittedZ1.objects.filter(
                 jig_completed_id=jig_completed_id, lot_id=lot_id
             ).order_by('-submitted_at').first()
-            if _submitted_rec and _submitted_rec.total_qty is not None:
+            _qty_locked_by_override = False
+            if _submitted_rec and _submitted_rec.total_qty is not None and (not _will_be_ditto_merged or _is_ditto_primary):
                 # ✅ Use submitted LOT Qty - SSOT (whether draft or final)
                 qty = _submitted_rec.total_qty
+                _qty_locked_by_override = _will_be_ditto_merged
 
             # ---------------------------------------------------------------
             # STEP 4: Always recompute tray slots using DB capacity.
@@ -3016,6 +3062,13 @@ class GetUnloadModelsZ1View(APIView):
                             'lot_id': source_lot_id,
                             'qty': int(source.get('qty') or 0),
                             'jig_id': source_jig_id,
+                            # Reload from a draft loses the in-memory 'is_newly_added' flag
+                            # STEP 5 sets; restore it here so the Remove action (and the
+                            # frontend's is_newly_added-gated merge label) still works after
+                            # a draft save. Safe: RemoveMergedModelZ1View only ever deletes
+                            # is_merged_additional=True rows, and the Remove control itself
+                            # is hidden once the parent model is finally submitted (is_unloaded).
+                            'is_newly_added': True,
                         })
                 if source_jig_ids:
                     display_jig_id = ', '.join(_jul_ordered_unique(source_jig_ids))
@@ -3030,6 +3083,27 @@ class GetUnloadModelsZ1View(APIView):
 
             # Determine draft status for this model
             has_draft = bool(submitted_data and submitted_data.get('is_draft'))
+
+            # Carry previously-scanned tray IDs into the freshly-built tray_slots
+            # (STEP 4 above always builds them blank) BEFORE any STEP 3c ditto-merge
+            # rebuild runs. Without this, a model that gets automatically combined
+            # with a same-model sibling lot on this jig (not via the interactive
+            # Add Model flow) has its slot count grow, _jul_rebuild_tray_slots_z1
+            # flags the extra slots as newly-added, and the frontend's reorder
+            # guard then skips its usual submitted_data pre-fill entirely — so a
+            # resumed draft would show every tray box empty despite already being
+            # saved. Populating tray_id here means the data is already present on
+            # the slot the moment it reaches the frontend, independent of that guard.
+            if submitted_data and submitted_data.get('tray_data'):
+                _saved_by_slot = {
+                    t.get('slot'): t.get('tray_id')
+                    for t in submitted_data['tray_data']
+                    if isinstance(t, dict) and t.get('tray_id')
+                }
+                for _slot in tray_slots:
+                    _saved_tid = _saved_by_slot.get(_slot['slot'])
+                    if _saved_tid:
+                        _slot['tray_id'] = _saved_tid
 
             # Plating color display name — try TotalStockModel → mmc → JigCompleted draft_data
             plating_color_name = ''
@@ -3070,6 +3144,7 @@ class GetUnloadModelsZ1View(APIView):
                 'images': images,
                 'jig_id': display_jig_id,
                 'merged_lots': restored_merged_lots,
+                '_qty_locked_by_override': _qty_locked_by_override,
             })
 
         # ---------------------------------------------------------------
@@ -3100,7 +3175,14 @@ class GetUnloadModelsZ1View(APIView):
                     primary['merged_lots'].extend(m.get('merged_lots') or [])
                     _info = f"+{m['qty']} from {m['lot_id']}"
                     primary['merged_info'] = (primary.get('merged_info', '') + '; ' + _info) if primary.get('merged_info') else _info
-                    primary['qty'] += m['qty']
+                    # If the primary's qty was restored from its own persisted
+                    # total_qty (STEP 3b), that total already accounts for this
+                    # sibling's native share (every save writes the full combined
+                    # figure back). Adding m['qty'] again here would double-count
+                    # it on every reopen. Only add it fresh when the primary's
+                    # qty is still its raw, un-overridden per-lot amount.
+                    if not primary.get('_qty_locked_by_override'):
+                        primary['qty'] += m['qty']
                     # Recalculate the combined quantity from scratch so there is
                     # never more than one partial (top) tray. Tray IDs already
                     # scanned onto the existing slots are preserved in order.
@@ -3112,7 +3194,11 @@ class GetUnloadModelsZ1View(APIView):
                     # Combined entry counts as unloaded only once every merged lot is unloaded.
                     primary['is_unloaded'] = primary['is_unloaded'] and m['is_unloaded']
                     primary['is_draft'] = primary['is_draft'] or m['is_draft']
-                    primary['is_already_loaded'] = primary.get('is_already_loaded') or m.get('is_already_loaded', False)
+                    # "Already Loaded" must hold for ALL merged lots, not ANY — mirroring
+                    # the jig-level is_already_loaded_z1 rule. Using OR here let a single
+                    # merged-in sibling lot (already consumed elsewhere) mask a primary lot
+                    # that still has its own real draft/tray data, hiding the Resume action.
+                    primary['is_already_loaded'] = primary.get('is_already_loaded', False) and m.get('is_already_loaded', False)
                 else:
                     if _key:
                         _by_model_no[_key] = m

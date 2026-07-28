@@ -7979,6 +7979,12 @@ window.initApiInProgress = window.initApiInProgress || false;
 document.addEventListener('click', function(e){
   const btn = e.target.closest('.open-jig-modal-btn');
   if(!btn) return;
+  // row_lock_guard.js swallows the user's real first click (stopImmediatePropagation)
+  // while it acquires the row lock, then replays it via a tagged synthetic click once
+  // the lock is held. That replay must bypass the duplicate check below — otherwise
+  // isJigInitCalled (already set true from the swallowed first pass) blocks it too,
+  // and the modal never opens on a normal single click.
+  if(e.__ttRowLockReplay) return;
   if(isJigInitCalled){
     console.log('🚫 Duplicate Init API blocked');
     e.stopImmediatePropagation();
@@ -7988,8 +7994,11 @@ document.addEventListener('click', function(e){
   isJigInitCalled = true;
   // set the init lock immediately to avoid ajax race where two calls are fired
   window.initApiInProgress = true;
-  // safety: release the lock after 10s if something goes wrong (prevents permanent lock)
-  setTimeout(function(){ if(window.initApiInProgress){ window.initApiInProgress = false; } }, 10000);
+  // safety: release the lock after 10s if something goes wrong (prevents permanent lock).
+  // Must also clear isJigInitCalled here, not just initApiInProgress — otherwise a modal
+  // close path that misses closeJigModal() leaves this guard stuck true forever, silently
+  // blocking every future Add Jig click until the page is reloaded.
+  setTimeout(function(){ window.initApiInProgress = false; isJigInitCalled = false; }, 10000);
   console.log('🔥 Add Jig Clicked (guarded)');
 }, true);
 
