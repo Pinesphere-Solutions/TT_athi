@@ -3287,16 +3287,15 @@ class GetUnloadModelsZ1View(APIView):
                         })
                         m['qty'] += a_qty
 
-                        # Backfill tray_id onto the existing slots from submitted_data
-                        # (unchanged behaviour) before recalculating quantities.
-                        _existing_tray_ids = {}
-                        if m.get('submitted_data') and m['submitted_data'].get('tray_data'):
-                            for _td in m['submitted_data']['tray_data']:
-                                _existing_tray_ids[_td['slot']] = _td.get('tray_id', '')
-                        if _existing_tray_ids:
-                            for _slot in m['tray_slots']:
-                                if not _slot.get('tray_id'):
-                                    _slot['tray_id'] = _existing_tray_ids.get(_slot['slot'], '')
+                        # NOTE: tray_id for m['tray_slots'] is already carried forward from
+                        # submitted_data earlier (see "Carry previously-scanned tray IDs into
+                        # the freshly-built tray_slots" above, before STEP 3c). Re-applying
+                        # submitted_data here by slot NUMBER is not just redundant — on the
+                        # second (or later) additional jig merged in this same request, prior
+                        # loop iterations have already renumbered m['tray_slots'] (new blank
+                        # slots inserted ahead of the old ones), so matching stale
+                        # submitted_data slot numbers here would stamp an already-scanned
+                        # tray ID onto a genuinely new, blank slot from THIS iteration.
 
                         # Give the newly-added lot its own fresh, blank tray slots
                         # placed ahead of the existing ones (new lot on top, old lot

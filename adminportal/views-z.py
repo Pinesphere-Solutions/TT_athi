@@ -43,7 +43,6 @@ from django.db.models.functions import Cast
 from django.db.models import IntegerField
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.throttling import UserRateThrottle
 from adminportal.models import *
 from .models import *
 from django.core.paginator import Paginator
@@ -660,7 +659,6 @@ class IndexView(APIView):
 @method_decorator(login_required(login_url='login'), name='dispatch')
 class DashboardStatsAPIView(APIView):
     renderer_classes = [JSONRenderer]
-    throttle_classes = [UserRateThrottle]
 
     def get(self, request, format=None):
         from django.conf import settings
@@ -3298,7 +3296,6 @@ class ModelMasterAPIView(APIView):
 @method_decorator(require_admin, name='dispatch')
 class LocationAPIView(APIView):
     renderer_classes = [JSONRenderer]
-    throttle_classes = [UserRateThrottle]
 
     def get(self, request):
         """Get all Locations"""
@@ -4160,10 +4157,8 @@ class RoleListAPIView(APIView):
 
 
 _HTML_CHARS_RE = re.compile(r'[<>&"\']')
-_USERNAME_RE = re.compile(r'^[A-Za-z0-9@.+_-]+$')
 _EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
 _PASSWORD_RE = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]).{8,}$')
-USERNAME_VALIDATION_ERROR = 'Username may contain only letters, numbers, and the characters @ . + - _.'
 
 
 def _validate_user_text_field(value, field_name):
@@ -4171,15 +4166,6 @@ def _validate_user_text_field(value, field_name):
     if value and _HTML_CHARS_RE.search(value):
         return f'{field_name} must not contain HTML characters (< > & \' ").'
     return None
-
-
-def validate_safe_username(value):
-    username = str(value or '').strip()
-    if not username:
-        raise ValueError('Username is required.')
-    if len(username) > 150 or not _USERNAME_RE.fullmatch(username):
-        raise ValueError(USERNAME_VALIDATION_ERROR)
-    return username
 
 
 def _validate_email(email):
@@ -4352,10 +4338,7 @@ class UserCreateAPIView(APIView):
         department_id = data.get('department')
         role_id = data.get('role')
         group_ids = _normalize_group_ids_from_payload(data)
-        try:
-            username = validate_safe_username(data.get('username') or email or f"{first_name}.{last_name}")
-        except ValueError as exc:
-            return Response({'success': False, 'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        username = (data.get('username') or email or f"{first_name}.{last_name}").strip()
 
         try:
             with transaction.atomic():
@@ -4789,8 +4772,6 @@ class UserUpdateAPIView(APIView):
         password = data.get('password')
 
         try:
-            if new_username is not None:
-                new_username = validate_safe_username(new_username)
             if new_first_name is not None:
                 new_first_name = validate_person_name(new_first_name)
             if new_last_name is not None:
@@ -4801,7 +4782,7 @@ class UserUpdateAPIView(APIView):
         try:
             user = User.objects.get(id=user_id)
             if new_username is not None:
-                user.username = new_username
+                user.username = str(new_username).strip()
             if new_first_name is not None:
                 user.first_name = new_first_name
             if new_last_name is not None:

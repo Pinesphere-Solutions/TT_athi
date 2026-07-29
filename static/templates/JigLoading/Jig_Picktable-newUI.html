@@ -7378,6 +7378,16 @@ document.addEventListener('DOMContentLoaded', function () {
   // Reveal per-row checkbox (keeps table structure intact)
   document.querySelectorAll('.add-model-checkbox').forEach(cb => cb.style.display = 'inline-block');
 
+  // Add Model filter screen: row selection happens via checkbox only — the
+  // per-row "Add Jig" button must stay disabled here so it can't be used to
+  // open a fresh Add Jig modal while picking a secondary model.
+  document.querySelectorAll('.open-jig-modal-btn').forEach(btn => {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    btn.title = 'Not available while selecting a model to add';
+  });
+
   // Cancel button — abandon the Add Model flow entirely and return to the plain
   // Pick Table. Deliberately does NOT use return_to_modal=1: that flag tells
   // handleMergeFlow() to reopen the Add Jig modal for the primary lot, which put

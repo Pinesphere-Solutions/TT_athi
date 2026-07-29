@@ -2742,6 +2742,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var nextInput = accInputs.slice(targetIndex + 1).find(function (inp) { return !inp.value.trim(); });
       if (nextInput) nextInput.focus();
       else targetInput.focus();
+      applyScanLockAndOrder();
       return true;
     }
 
@@ -2783,6 +2784,54 @@ document.addEventListener("DOMContentLoaded", function () {
           accInputs[j].value = '';
         }
       }
+      applyScanLockAndOrder();
+    }
+
+    // Strict one-by-one gate: Reject must be fully scanned before Delink unlocks;
+    // Delink (if any slots are required) must be fully scanned before Accept unlocks.
+    // Top-tray chips route to whichever of Delink/Accept is currently unlocked, and
+    // grey out only while both are locked. Slots within a section still fill in order.
+    function applyScanLockAndOrder() {
+      var rejInputs = Array.from(rejectSlotsCont.querySelectorAll('.nq-rej-tray-input'));
+      var accInputs = Array.from(acceptSlotsCont.querySelectorAll('.nq-acc-tray-input'));
+      var delinkInputs = Array.from(delinkList.querySelectorAll('.nq-delink-tray-input'));
+
+      function isSectionComplete(inputs) {
+        return inputs.every(function (inp) { return inp.value.trim(); });
+      }
+
+      var rejectComplete = isSectionComplete(rejInputs);
+      var delinkComplete = isSectionComplete(delinkInputs);
+      var lockDelink = !rejectComplete;
+      var lockAccept = !rejectComplete || !delinkComplete;
+      state.lockDelink = lockDelink;
+      state.lockAccept = lockAccept;
+
+      function styleInput(inp, locked) {
+        inp.disabled = locked;
+        inp.style.background = locked ? '#eeeeee' : '';
+        inp.style.opacity = locked ? '0.55' : '1';
+        inp.style.cursor = locked ? 'not-allowed' : '';
+      }
+
+      function applySection(inputs, sectionLocked) {
+        var blockedByOrder = false;
+        inputs.forEach(function (inp) {
+          styleInput(inp, sectionLocked || blockedByOrder);
+          if (!inp.value.trim()) blockedByOrder = true;
+        });
+      }
+
+      applySection(rejInputs, false);
+      applySection(delinkInputs, lockDelink);
+      applySection(accInputs, lockAccept);
+
+      var chipsLocked = lockDelink && lockAccept;
+      origContainer.querySelectorAll('span[data-tray-id]').forEach(function (chip) {
+        chip.style.pointerEvents = chipsLocked ? 'none' : '';
+        chip.style.filter = chipsLocked ? 'grayscale(1)' : '';
+        chip.style.opacity = chipsLocked ? '0.45' : (chip.dataset.selected === '1' ? '0.7' : '1');
+      });
     }
 
     function renderAllocation(data) {
@@ -2804,19 +2853,24 @@ document.addEventListener("DOMContentLoaded", function () {
         chip.dataset.isTop = t.is_top ? '1' : '0';
         chip.dataset.selected = '0';
         chip.addEventListener('click', function () {
-          if (getFocusedTrayInput('.nq-delink-tray-input', delinkList)) {
+          if (state.lockDelink && state.lockAccept) return;
+          if (!state.lockDelink && getFocusedTrayInput('.nq-delink-tray-input', delinkList)) {
             fillDelinkSlotFromTap(t.tray_id);
             return;
           }
-          if (getFocusedTrayInput('.nq-acc-tray-input', acceptSlotsCont)) {
+          if (!state.lockAccept && getFocusedTrayInput('.nq-acc-tray-input', acceptSlotsCont)) {
             fillAcceptSlotFromTap(t.tray_id);
             return;
           }
-          if ((state.autoDelinkIds || []).indexOf(t.tray_id) !== -1) {
+          if (!state.lockDelink && (state.autoDelinkIds || []).indexOf(t.tray_id) !== -1) {
             fillDelinkSlotFromTap(t.tray_id);
             return;
           }
-          fillAcceptSlotFromTap(t.tray_id);
+          if (!state.lockAccept) {
+            fillAcceptSlotFromTap(t.tray_id);
+          } else if (!state.lockDelink) {
+            fillDelinkSlotFromTap(t.tray_id);
+          }
         });
         origContainer.appendChild(chip);
       });
@@ -2998,6 +3052,14 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         inp.addEventListener('blur', validateTrayInput);
       });
+
+      rejectSlotsCont.querySelectorAll('.nq-rej-tray-input').forEach(function (inp) {
+        inp.addEventListener('input', applyScanLockAndOrder);
+      });
+      acceptSlotsCont.querySelectorAll('.nq-acc-tray-input').forEach(function (inp) {
+        inp.addEventListener('input', applyScanLockAndOrder);
+      });
+      applyScanLockAndOrder();
     }
 
     if (clearAllBtn) {
@@ -3026,6 +3088,7 @@ document.addEventListener("DOMContentLoaded", function () {
             chip.style.opacity = '1';
           });
           updateDelinkSection();
+          applyScanLockAndOrder();
         }
       });
     }

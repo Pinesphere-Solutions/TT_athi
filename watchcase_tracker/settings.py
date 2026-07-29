@@ -209,6 +209,9 @@ REST_FRAMEWORK = {
     # Disables DRF's schema/metadata response on OPTIONS requests.
     # No CORS or API discovery is required in this application.
     'DEFAULT_METADATA_CLASS': None,
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '60/min',
+    },
 }
 
 
