@@ -276,6 +276,29 @@ class ShortcutConfigurationAPIView(APIView):
         })
 
 
+@method_decorator(login_required(login_url='login-api'), name='dispatch')
+class SessionHeartbeatAPIView(APIView):
+    """
+    Called periodically by session_guard.js while a tab is genuinely open.
+    Refreshes UserActiveSession.updated_at so the single-session-per-account
+    check in services.get_active_session_conflict_message can tell a closed
+    tab/browser apart from one that is still open, instead of waiting out
+    the full idle session timeout.
+    """
+    renderer_classes = [JSONRenderer]
+
+    def post(self, request, format=None):
+        from django.utils import timezone
+        from .models import UserActiveSession
+
+        session_key = getattr(request.session, 'session_key', None)
+        if session_key:
+            UserActiveSession.objects.filter(
+                user=request.user, session_key=session_key,
+            ).update(updated_at=timezone.now())
+
+        return Response({'success': True})
+
 
 # -----------------------------------------------------------------------------
 # TimedLoginView
@@ -308,6 +331,8 @@ class TimedLoginView(__import__('django.contrib.auth.views', fromlist=['LoginVie
         context['sso_access_denied'] = self.request.session.pop('sso_access_denied', False)
         if self.request.GET.get('otp_error') == 'expired':
             context['error'] = 'Verification code expired.'
+        if self.request.GET.get('session_error') == 'interrupted':
+            context['error'] = 'Session Interrupted - please relogin to proceed.'
         # Surfaced by the SSO routes when Microsoft sign-in cannot start/finish,
         # so the failure is visible instead of silently returning to this page.
         sso_error = self.request.GET.get('sso_error')
@@ -422,7 +447,34 @@ class TimedLoginView(__import__('django.contrib.auth.views', fromlist=['LoginVie
         is_valid = form.is_valid()  # runs authenticate() + password verify
         timers['form_is_valid'] = (_time.time() - t0) * 1000
 
+        session_conflict_message = None
         if is_valid:
+            from .services import get_active_session_conflict_message
+            current_session_key = getattr(request.session, 'session_key', None)
+            session_conflict_message = get_active_session_conflict_message(
+                form.get_user(), current_session_key,
+            )
+
+        if is_valid and session_conflict_message:
+            response = self.form_invalid(form)
+            if hasattr(response, 'context_data'):
+                response.context_data['error'] = session_conflict_message
+            self._refresh_captcha_context_after_failed_login(response, username)
+            security_logger = logging.getLogger('security.auth')
+            security_logger.warning(
+                'LOGIN_BLOCKED_ACTIVE_SESSION_ELSEWHERE: user=%s', username,
+            )
+            _emit_auth_event(
+                request,
+                'AUTH.LOGIN.BLOCKED',
+                'WARNING',
+                'Login attempt blocked: account already active on another device',
+                {
+                    'username_hash': _perf_username(username),
+                    'duration_ms': round((perf_time.perf_counter() - login_start) * 1000, 3),
+                },
+            )
+        elif is_valid:
             t0 = _time.time()
             response = self.form_valid(form)
             timers['form_valid_otp'] = (_time.time() - t0) * 1000

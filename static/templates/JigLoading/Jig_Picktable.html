@@ -291,20 +291,36 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
    equalize their sizing and padding. ===== */
 .jig-field-strip-single {
   align-items: stretch;
-  gap: 10px;
+  flex-wrap: nowrap;
+  gap: 6px;
   margin-bottom: 12px;
 }
 .jig-field-strip-single .jig-field-box,
 .jig-field-strip-single .jig-stat-card {
-  flex: 1 1 150px;
-  min-width: 140px;
-  padding: 9px 14px;
-  border-radius: 10px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  overflow: hidden;
 }
-.jig-field-strip-single .jig-stat-label { margin-bottom: 4px; }
+.jig-field-strip-single .jig-field-box label,
+.jig-field-strip-single .jig-stat-card .jig-stat-label {
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jig-field-strip-single .jig-field-box input,
+.jig-field-strip-single .jig-stat-card .jig-stat-value,
+.jig-field-strip-single .jig-stat-card .jig-field-static-value {
+  font-size: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.jig-field-strip-single .jig-stat-label { margin-bottom: 2px; }
 /* Jig Composition button as the last item of the same row */
 .jig-field-strip-single .jig-composition-btn {
   flex: 0 0 auto;
@@ -1249,67 +1265,36 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
       <button type="button" onclick="document.getElementById('addModelErrorBanner').style.display='none'" style="float:right; background:none; border:none; color:#c62828; cursor:pointer; font-weight:700; font-size:16px; line-height:1;">&times;</button>
     </div>
     
-    <!-- Header - Clean Minimal Layout -->
+    <!-- Header + field strip merged into a single-line card: title on the left,
+         Nickel Bath / Tray Type / Lot Qty / Jig Capacity / Jig ID / Empty Hooks / etc.
+         fill the rest of the same row. -->
     <div class="jig-modal-header jig-modal-header-v2">
       <div class="jig-header-row">
-        <div class="jig-header-title-block">
-          <span class="jig-header-icon" aria-hidden="true">
-            <i class="fa fa-th-large"></i>
-          </span>
-          <h3 id="jigAddModalTitle" class="jig-header-title">
-            Jig Loading
-            
-            <span id="modalPlatingStockNo" style="display: none"></span>
-          </h3>
+ 
+
+        <!-- Form Fields — merged into the header row so title + fields render as a
+             single-line card instead of stacking on 2 lines. delinkTrayCount is kept
+             as a hidden element only — JS elsewhere (row-count badges, resets) still
+             reads/writes it. -->
+        <form id="jigAddForm" autocomplete="off">
+        <b id="delinkTrayCount" style="display:none;">0</b>
+        <div class="jig-field-strip jig-field-strip-single">
+        <div class="jig-field-box">
+          <label for="nickelBathTypeInput">Nickel Bath</label>
+          <input type="text" id="nickelBathTypeInput" readonly />
         </div>
-        <!-- Nickel Bath Type / Tray Type / Lot Qty / Jig Capacity — moved up next to the
-             title (in place of the header subtitle), styled as horizontal pill chips
-             (same look as the delink Tray ID chips). Same element ids as before, so all
-             existing JS reads/writes keep working. -->
-        <div class="jig-header-meta">
-          <span class="jig-header-meta-chip">
-            <label for="nickelBathTypeInput">Nickel Bath</label>
-            <input type="text" id="nickelBathTypeInput" readonly />
-          </span>
-          <span class="jig-header-meta-chip">
-            <label for="trayTypeInput">Tray Type</label>
-            <input type="text" id="trayTypeInput" readonly />
-          </span>
-          <span class="jig-header-meta-chip jig-header-meta-green">
-            <label for="reallotQty">Lot Qty</label>
-            <input type="number" id="reallotQty" readonly value="{{ data.display_qty|default:0 }}" />
-          </span>
-          <span class="jig-header-meta-chip">
-            <label for="jigCapacityInput">Jig Capacity</label>
-            <input type="number" id="jigCapacityInput" readonly />
-          </span>
+        <div class="jig-field-box">
+          <label for="trayTypeInput">Tray Type</label>
+          <input type="text" id="trayTypeInput" readonly />
         </div>
-      </div>
-      <!-- Cycle Badge (pinned top-right) -->
-      <div class="jig-header-cycle-pill">
-        Cycle <span id="modalNoOfCycle">-</span>
-      </div>
-    </div>
-
-    <!-- Content -->
-    <div class="jig-modal-content">
-
-    <!-- Model Card Strip -->
-    <div id="modelCardStrip" class="model-card-strip">
-      <!-- Cards rendered dynamically by JS -->
-    </div>
-
-    <!-- Form Fields -->
-    <form id="jigAddForm" autocomplete="off">
-
-      <!-- SINGLE ROW: Jig ID / Empty Hooks / Loaded Cases Qty / Total Delink Qty /
-           Broken-Buildup Hooks all on one line (previously 2 separate rows).
-           (Nickel Bath Type / Tray Type / Lot Qty / Jig Capacity moved up into the
-           modal header next to the title — see .jig-header-meta.) delinkTrayCount
-           is kept as a hidden element only — JS elsewhere (row-count badges, resets)
-           still reads/writes it. -->
-      <b id="delinkTrayCount" style="display:none;">0</b>
-      <div class="jig-field-strip jig-field-strip-single">
+        <div class="jig-field-box jig-field-box-green">
+          <label for="reallotQty">Lot Qty</label>
+          <input type="number" id="reallotQty" readonly value="{{ data.display_qty|default:0 }}" />
+        </div>
+        <div class="jig-field-box">
+          <label for="jigCapacityInput">Jig Capacity</label>
+          <input type="number" id="jigCapacityInput" readonly />
+        </div>
         <div class="jig-field-box jig-field-box-active">
           <label for="jigIdInput">Jig ID</label>
           <input type="text" id="jigIdInput" maxlength="9" required placeholder="J144-0000" />
@@ -1344,8 +1329,22 @@ body.sidebar-icon-only #order-listing td:nth-child(3) {
         <button type="button" id="jigCompositionBtn" class="jig-composition-btn" style="padding:4px 12px; font-size:11px; background:linear-gradient(135deg,#028084,#014d4e); color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:600; box-shadow:0 2px 4px rgba(2,128,132,0.2); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(2,128,132,0.3)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(2,128,132,0.2)';">
           <i class="fa fa-cogs" style="margin-right:5px;"></i> Jig Composition
         </button>
+        </div>
+        </form>
       </div>
-    </form>
+      <!-- Cycle Badge (pinned top-right) -->
+      <div class="jig-header-cycle-pill">
+        Cycle <span id="modalNoOfCycle">-</span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="jig-modal-content">
+
+    <!-- Model Card Strip -->
+    <div id="modelCardStrip" class="model-card-strip">
+      <!-- Cards rendered dynamically by JS -->
+    </div>
 
     <!-- ============================================================
          SPLIT LAYOUT: Delink (LEFT) + Excess/Partial (RIGHT)
