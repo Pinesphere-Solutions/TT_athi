@@ -702,7 +702,7 @@ SESSION_ALREADY_ACTIVE_MESSAGE = 'Logout in another device to proceed.'
 ACTIVE_SESSION_STALE_SECONDS = 100
 
 
-def get_active_session_conflict_message(user, current_session_key=None):
+def get_active_session_conflict_message(user, current_session_key=None, request=None):
     """
     Return the "already logged in elsewhere" error message if this user has a
     live session on another device/browser, else None.
@@ -713,13 +713,24 @@ def get_active_session_conflict_message(user, current_session_key=None):
     so the user must log out of the other device before logging in here.
 
     `current_session_key` (the browser's own pre-login session, if any) is
-    excluded so re-submitting the login form from the same already-active
-    browser/tab is never mistaken for a conflicting device.
+    checked first, but on its own it under-catches: django.contrib.auth.login()
+    always cycles the session key (session-fixation protection), so the
+    pre-login anonymous key can never equal the just-created active session's
+    key - not even for the exact same tab. Without a second signal, a
+    double-click on "Sign In", or a slow request the browser retried, makes
+    the very first login for an account get rejected as "another device",
+    because by the time the second near-simultaneous request runs this
+    check, the first request has already logged in and created the
+    UserActiveSession row it now sees as a conflict.
+    `request` (when supplied) lets IP + User-Agent stand in for "this is the
+    same device asking again": a genuinely different device won't share
+    both, so cross-device enforcement is unaffected.
     """
     from django.contrib.sessions.models import Session
     from django.utils import timezone
     from datetime import timedelta
     from .models import UserActiveSession
+    from .signals import _get_client_ip
 
     active_session = UserActiveSession.objects.filter(user=user).first()
     if not active_session or not active_session.session_key:
@@ -727,6 +738,12 @@ def get_active_session_conflict_message(user, current_session_key=None):
 
     if current_session_key and active_session.session_key == current_session_key:
         return None
+
+    if request is not None:
+        req_ip = _get_client_ip(request)
+        req_ua = request.META.get('HTTP_USER_AGENT', '')
+        if req_ip and req_ip == active_session.ip_address and req_ua == active_session.user_agent:
+            return None
 
     # No heartbeat recently -> other tab/browser was closed (or crashed)
     # without hitting logout. Don't make the new login wait out the full

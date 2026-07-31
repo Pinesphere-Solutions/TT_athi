@@ -166,8 +166,13 @@ def _jul_prepend_new_lot_tray_slots_z1(new_qty, combined_total_qty, tray_capacit
     the combined total (not each lot's own independent split); if pooling
     the leftovers needs fewer trays than the sum of both lots' own splits,
     trailing NEVER-SCANNED (no tray_id) slots from the existing lot are
-    trimmed to match — a slot that already holds a real tray_id is never
-    dropped, even if that means keeping one tray beyond the strict minimum.
+    trimmed to match. If already-scanned (real tray_id) slots still exceed
+    what the combined total's tray math allows, the LOT simply no longer
+    needs that many trays: the most-recently-scanned tail is kept and the
+    earliest excess is dropped, so the final slot count always equals
+    exactly ceil(combined_total_qty / capacity) — never more, never fewer —
+    and every tray is either the single top remainder or a full-capacity
+    tray. A tray is never left at qty=0.
     """
     cap = tray_capacity if tray_capacity and tray_capacity > 0 else 20
     existing_slots = existing_slots or []
@@ -178,8 +183,13 @@ def _jul_prepend_new_lot_tray_slots_z1(new_qty, combined_total_qty, tray_capacit
 
     old_slots = list(existing_slots)
     max_old = max(num_trays_total - new_num_trays, 0)
+    # Trim trailing NEVER-SCANNED (blank) slots first — free, no data loss.
     while len(old_slots) > max_old and old_slots and not old_slots[-1].get('tray_id'):
         old_slots.pop()
+    # Still too many (all real, already-scanned)? Keep the tail (most
+    # recently scanned), drop the earliest excess — never exceed max_old.
+    if len(old_slots) > max_old:
+        old_slots = old_slots[len(old_slots) - max_old:] if max_old > 0 else []
 
     combined = []
     for _ in range(new_num_trays):
@@ -189,7 +199,16 @@ def _jul_prepend_new_lot_tray_slots_z1(new_qty, combined_total_qty, tray_capacit
             'tray_id': slot.get('tray_id', ''),
             'is_newly_added_slot': slot.get('is_newly_added_slot', False),
         })
+    # Defensive pad: guarantees slot count == num_trays_total even if the
+    # surviving lot's own slot list was ever shorter than the capacity math
+    # expects, so the invariant below always holds.
+    while len(combined) < num_trays_total:
+        combined.append({'tray_id': '', 'is_newly_added_slot': True})
 
+    # Every tray is either the single top (remainder) tray or a full-capacity
+    # tray, recomputed fresh from the combined total — mirrors
+    # _jul_rebuild_tray_slots_z1. Sum always equals combined_total_qty
+    # exactly; no tray is ever left at qty=0.
     for idx, slot in enumerate(combined):
         is_top = idx == 0
         slot['slot'] = idx + 1
@@ -234,7 +253,7 @@ class Jig_Unloading_MainTable(LoginRequiredMixin, TemplateView):
         Get tray capacity based on tray type name.
         Rules (per workflow spec):
         - Normal (or NR/NB/ND/NL): 20
-        - Jumbo  (or JR/JB/JD):    12
+        - Jumbo  (or JR/JB/JD):    16
         - Others: DB lookup fallback
         """
         try:
@@ -243,7 +262,7 @@ class Jig_Unloading_MainTable(LoginRequiredMixin, TemplateView):
             if _tn in ('NORMAL', 'NR', 'NB', 'ND', 'NL', 'NW'):
                 return 20
             elif _tn in ('JUMBO', 'JR', 'JB', 'JD'):
-                return 12
+                return 16
 
             # Fallback: try custom capacity override table
             custom_capacity = InprocessInspectionTrayCapacity.objects.filter(
@@ -1945,7 +1964,7 @@ class JigUnloading_Completedtable(LoginRequiredMixin, TemplateView):
         Get tray capacity based on tray type name.
         Rules (per workflow spec):
         - Normal (or NR/NB/ND/NL): 20
-        - Jumbo  (or JR/JB/JD):    12
+        - Jumbo  (or JR/JB/JD):    16
         - Others: DB lookup fallback
         """
         try:
@@ -1954,7 +1973,7 @@ class JigUnloading_Completedtable(LoginRequiredMixin, TemplateView):
             if _tn in ('NORMAL', 'NR', 'NB', 'ND', 'NL', 'NW'):
                 return 20
             elif _tn in ('JUMBO', 'JR', 'JB', 'JD'):
-                return 12
+                return 16
 
             # Fallback: try custom capacity override table
             custom_capacity = InprocessInspectionTrayCapacity.objects.filter(
@@ -2835,8 +2854,8 @@ class GetUnloadModelsZ1View(APIView):
 
     def _get_tray_info_z1(self, model_master):
         """Get tray_type, tray_capacity, tray_code, tray_color from ModelMaster.
-        Capacity is determined by Jig Unloading spec (Normal=20, Jumbo=12),
-        overriding the DB value which may be stale (e.g. 16 for Normal trays).
+        Capacity is determined by Jig Unloading spec (Normal=20, Jumbo=16),
+        overriding the DB value which may be stale.
         ModelMaster.tray_code is the tray-code SSOT.
         TrayType remains the tray category (Normal/Jumbo).
         """
@@ -2849,12 +2868,12 @@ class GetUnloadModelsZ1View(APIView):
             if not tray_code:
                 tray_code = tray_type
             tray_color = tray_type_obj.tray_color or ''     # e.g. Red, Blue, D.Green, L.Green
-            # Jig Unloading spec: Normal tray codes = 20, Jumbo = 12 (override DB)
+            # Jig Unloading spec: Normal tray codes = 20, Jumbo = 16 (override DB)
             _tc = tray_code.upper()
             if _tc in ('NORMAL', 'NR', 'NB', 'ND', 'NL', 'NW'):
                 tray_capacity = 20
             elif _tc in ('JUMBO', 'JR', 'JB', 'JD', 'JL'):
-                tray_capacity = 12
+                tray_capacity = 16
             else:
                 tray_capacity = tray_type_obj.tray_capacity or 20
             return tray_type, tray_capacity, tray_code, tray_color
@@ -3063,12 +3082,17 @@ class GetUnloadModelsZ1View(APIView):
                             'qty': int(source.get('qty') or 0),
                             'jig_id': source_jig_id,
                             # Reload from a draft loses the in-memory 'is_newly_added' flag
-                            # STEP 5 sets; restore it here so the Remove action (and the
-                            # frontend's is_newly_added-gated merge label) still works after
-                            # a draft save. Safe: RemoveMergedModelZ1View only ever deletes
+                            # STEP 5 sets; restore the value persisted at save time (see
+                            # SaveModelUnloadZ1View source_mappings above) so the Remove
+                            # control keeps showing only for lots actually merged in via the
+                            # interactive Add Model action — NOT for a same-model ditto-merge
+                            # that was already physically on the jig at load time. Hardcoding
+                            # this True made every original/default sub-model show the Remove
+                            # icon (and be removable, corrupting LOT Qty) after any draft save.
+                            # Safe either way: RemoveMergedModelZ1View only ever deletes
                             # is_merged_additional=True rows, and the Remove control itself
                             # is hidden once the parent model is finally submitted (is_unloaded).
-                            'is_newly_added': True,
+                            'is_newly_added': bool(source.get('is_newly_added', False)),
                         })
                 if source_jig_ids:
                     display_jig_id = ', '.join(_jul_ordered_unique(source_jig_ids))
@@ -3569,6 +3593,13 @@ class SaveModelUnloadZ1View(APIView):
                 'lot_id': merged_lot_id,
                 'qty': int(merged_lot.get('qty') or 0),
                 'jig_id': str(merged_lot.get('jig_id') or '').strip(),
+                # Preserve whether this lot was merged in via the interactive Add
+                # Model action (removable) vs. a same-model ditto-merge that was
+                # already physically on the jig at load time (not removable) —
+                # restoring this as an unconditional True on reload was making
+                # every original/default sub-model show the Remove icon after
+                # any draft save (see restore logic below).
+                'is_newly_added': bool(merged_lot.get('is_newly_added', False)),
             })
 
         source_metadata = {
@@ -4479,7 +4510,7 @@ def validate_tray_occupancy_z1(request):
         # Determine tray type from prefix
         is_jumbo = scanned_prefix.startswith('J')
         tray_type_str = 'Jumbo' if is_jumbo else 'Normal'
-        tray_capacity = 12 if is_jumbo else 20
+        tray_capacity = 16 if is_jumbo else 20
 
         print(f"✅ [Z1] Tray validation passed for {tray_id}")
         return JsonResponse({

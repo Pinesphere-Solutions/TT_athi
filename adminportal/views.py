@@ -452,7 +452,7 @@ class TimedLoginView(__import__('django.contrib.auth.views', fromlist=['LoginVie
             from .services import get_active_session_conflict_message
             current_session_key = getattr(request.session, 'session_key', None)
             session_conflict_message = get_active_session_conflict_message(
-                form.get_user(), current_session_key,
+                form.get_user(), current_session_key, request=request,
             )
 
         if is_valid and session_conflict_message:

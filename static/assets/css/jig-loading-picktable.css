@@ -731,7 +731,7 @@
    ============================================================ */
   .jig-modal-header-v2 {
     background: #fbfcfd !important;
-    padding: 14px 60px 14px 28px !important;
+    padding: 14px 60px 16px 28px !important;
     border-bottom: 1px solid #eef1f4;
     box-shadow: none !important;
     position: relative;
@@ -739,7 +739,7 @@
 
   .jig-header-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 12px;
   }

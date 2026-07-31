@@ -2416,13 +2416,23 @@ document.addEventListener('DOMContentLoaded', function() {
       var cap = m.tray_capacity > 0 ? m.tray_capacity : 20;
       var numTrays = m.qty > 0 ? Math.ceil(m.qty / cap) : 1;
       var remainder = m.qty > 0 ? (m.qty % cap === 0 ? cap : m.qty % cap) : 0;
+      // Add Model prepends the newly-merged lot's blank slots to the FRONT and
+      // pushes the surviving lot's real (already-scanned) slots to the TAIL
+      // (see _jul_prepend_new_lot_tray_slots_z1 backend mirror). Reading old
+      // slots by front index here was pulling the just-removed lot's blank
+      // slots back in and discarding the surviving lot's real tray IDs —
+      // e.g. lot A=52 (3 slots) + lot B=142 merged (8 blank slots prepended,
+      // 11 total) → removing B must restore A's original 3 slots, which now
+      // sit at indices 8-10, not 0-2. Read from the tail instead.
       var oldSlots = m.tray_slots || [];
+      var tailStart = Math.max(oldSlots.length - numTrays, 0);
       var newSlots = [];
       for (var i = 0; i < numTrays; i++) {
-        var isPreExisting = i < oldSlots.length;
+        var oldIdx = tailStart + i;
+        var isPreExisting = oldIdx < oldSlots.length;
         newSlots.push({
           slot: i + 1,
-          tray_id: isPreExisting ? (oldSlots[i].tray_id || '') : '',
+          tray_id: isPreExisting ? (oldSlots[oldIdx].tray_id || '') : '',
           qty: i === 0 ? remainder : cap,
           is_top_tray: i === 0,
           editable_qty: i === 0
@@ -2442,7 +2452,7 @@ document.addEventListener('DOMContentLoaded', function() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
         body: JSON.stringify({
-          jig_completed_id: m.jig_completed_id,
+          jig_completed_id: currentJigCompletedId,
           lot_id: m.lot_id,
           model_no: m.model_no,
           tray_data: m.tray_slots,
@@ -2457,7 +2467,15 @@ document.addEventListener('DOMContentLoaded', function() {
           merged_lots: m.merged_lots,
           lot_qty_edited: !!m.lot_qty_edited,
         }),
-      }).catch(function(err) { console.error('save_model_unload_z1 (remove-merge sync) failed:', err); });
+      })
+        .then(function(r) { return r.json().catch(function() { return {}; }); })
+        .then(function(result) {
+          if (!result || result.success !== true) {
+            console.error('save_model_unload_z1 (remove-merge sync) rejected:', result);
+            showTrayError((result && result.error) || 'Could not save the updated LOT Qty after removing the model. Please try again.');
+          }
+        })
+        .catch(function(err) { console.error('save_model_unload_z1 (remove-merge sync) failed:', err); });
     }
     renderModelTable(models, currentModelsData.all_unloaded);
   }
@@ -3053,7 +3071,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const m = currentModelsData.models[currentModelIndex];
     const { trayData } = collectTrayData();
     const topTrayRemark = document.getElementById('z1TopTrayRemark').value.trim();
-    const currentLotQty = parseInt(document.getElementById('z1TrayQty').value) || m.qty;
+    // m.qty is the authoritative total the tray table was built from (kept in sync
+    // by the backend on every merge); only trust the raw input when the user has
+    // actually typed into it this session, so a stale/unsynced DOM value from a
+    // prior Add-Model merge can never override the true combined total.
+    const currentLotQty = lotQtyEdited ? (parseInt(document.getElementById('z1TrayQty').value) || m.qty) : m.qty;
 
     const payload = {
       jig_completed_id: currentJigCompletedId,
@@ -3124,8 +3146,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Top tray remark validation removed - top tray qty is no longer editable
 
     const topTrayRemark = document.getElementById('z1TopTrayRemark').value.trim();
-    const currentLotQty = parseInt(document.getElementById('z1TrayQty').value) || m.qty;
-    
+    // m.qty is the authoritative total the tray table was built from; only trust
+    // the raw input when the user actually edited it this session (see Draft Save
+    // above for the same reasoning).
+    const currentLotQty = lotQtyEdited ? (parseInt(document.getElementById('z1TrayQty').value) || m.qty) : m.qty;
+
     // Validate LOT Qty
     if (currentLotQty < 0) {
       showTrayError('LOT Qty cannot be negative');
@@ -3392,43 +3417,30 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('z1AddModelBackBtn').addEventListener('click', function() { showLayer(layerTrayScan); });
   document.getElementById('z1AddModelCancelBtn').addEventListener('click', function() { showLayer(layerTrayScan); });
 
-  // Auto-save whatever tray IDs are currently typed (even partially filled) as a
-  // draft before the Add Model action refetches the model list from the backend.
-  // Add Model replaces currentModelsData entirely with a fresh server response, so
-  // any tray IDs typed on screen but never saved would otherwise be lost.
-  function silentSaveCurrentDraftThen(callback) {
+  // Carry forward whatever tray IDs are currently typed (even partially filled)
+  // across the Add Model merge, entirely client-side — Add Model must never
+  // write to the submitted table on its own; only an explicit Draft/Save/Submit
+  // action may create or update a JUSubmittedZ1 row (see Jig Unloading admin
+  // "auto processing" fix). Add Model replaces currentModelsData with a fresh
+  // server response, so any unsaved tray IDs are captured here first and
+  // reapplied after the merge via _z1ReapplyPendingTrayIds.
+  function collectPendingTrayIds() {
     const m = currentModelsData && currentModelsData.models && currentModelsData.models[currentModelIndex];
-    if (!m) { callback(); return; }
-    const { trayData } = collectTrayData();
-    const topTrayRemark = (document.getElementById('z1TopTrayRemark') || {}).value || '';
-    const currentLotQty = parseInt((document.getElementById('z1TrayQty') || {}).value) || m.qty;
-    const payload = {
-      jig_completed_id: currentJigCompletedId,
-      lot_id: m.lot_id,
-      model_no: m.model_no,
-      tray_data: trayData,
-      total_qty: currentLotQty,
-      missing_qty: 0,
-      top_tray_remark: topTrayRemark.trim(),
-      tray_type: m.tray_type,
-      tray_capacity: m.tray_capacity,
-      tray_code: m.tray_code,
-      tray_color: m.tray_color,
-      is_draft: true,
-      merged_lots: m.merged_lots || [],
-      lot_qty_edited: lotQtyEdited,
-    };
-    fetch(`${API_BASE}/save_model_unload_z1/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-      body: JSON.stringify(payload),
-    })
-      .then(function(r) { return r.json().catch(function() { return {}; }); })
-      .then(function() { callback(); })
-      .catch(function(err) {
-        console.error('Auto-save before Add Model failed:', err);
-        callback();
-      });
+    if (!m) return [];
+    return collectTrayData().trayData.map(function(t) { return t.tray_id; }).filter(Boolean);
+  }
+
+  // Add Model prepends the newly-merged lot's fresh blank slots to the FRONT
+  // and pushes this lot's own (in-progress) slots to the TAIL — mirrors
+  // _jul_prepend_new_lot_tray_slots_z1 / the Remove-merge tail logic above —
+  // so unsaved tray IDs typed before the merge land back on the same slots.
+  function _z1ReapplyPendingTrayIds(m, pendingTrayIds) {
+    if (!pendingTrayIds || !pendingTrayIds.length || !m || !Array.isArray(m.tray_slots)) return;
+    const slots = m.tray_slots;
+    const tailStart = Math.max(slots.length - pendingTrayIds.length, 0);
+    for (let i = 0; i < pendingTrayIds.length && (tailStart + i) < slots.length; i++) {
+      slots[tailStart + i].tray_id = pendingTrayIds[i];
+    }
   }
 
   // Layer 4 — confirm: call backend with selected jig IDs, then auto-open tray scan with merged qty
@@ -3441,14 +3453,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const additionalIds = Array.from(checked).map(function(cb) { return cb.dataset.jigId; });
     const savedModelNo = currentModelsData.models[currentModelIndex].model_no;
-    silentSaveCurrentDraftThen(function() {
-      openUnloadModalWithAdditional(currentJigCompletedId, additionalIds, savedModelNo);
-    });
+    const pendingTrayIds = collectPendingTrayIds();
+    openUnloadModalWithAdditional(currentJigCompletedId, additionalIds, savedModelNo, pendingTrayIds);
   });
 
   // --- Open modal with additional jig IDs — merges same plating_stk_no models ---
   // autoOpenModelNo: if provided, auto-navigates to tray scan for that model after loading
-  function openUnloadModalWithAdditional(jigCompletedId, additionalJigIds, autoOpenModelNo) {
+  // pendingTrayIds: unsaved tray IDs typed before the merge, reapplied client-side only
+  function openUnloadModalWithAdditional(jigCompletedId, additionalJigIds, autoOpenModelNo, pendingTrayIds) {
     currentJigCompletedId = jigCompletedId;
     modal.style.display = 'flex';
     showLayer(layerModelList);
@@ -3470,7 +3482,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Auto-navigate to tray scan for the merged model (combined qty, fresh slots)
         if (autoOpenModelNo) {
           const idx = data.models.findIndex(function(m) { return m.model_no === autoOpenModelNo && !m.is_unloaded; });
-          if (idx >= 0) { openTrayScan(idx); }
+          if (idx >= 0) {
+            _z1ReapplyPendingTrayIds(data.models[idx], pendingTrayIds);
+            openTrayScan(idx);
+          }
         }
       })
       .catch(err => {
@@ -3698,29 +3713,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const scanInput = document.getElementById('scanHiddenInput');
     const scanStatus = document.getElementById('scanStatusMessage');
     const scanMsg = document.getElementById('scanMessage');
-    if (!scanBtn || !scanInput) return;
+    if (!scanInput) return;
 
     let scanActive = false;
 
-    scanBtn.addEventListener('click', function() {
-      scanActive = !scanActive;
-      if (scanActive) {
-        scanStatus.style.display = 'inline';
-        scanInput.style.position = 'absolute';
-        scanInput.style.left = '-9999px';
-        scanInput.value = '';
-        scanInput.focus();
-        scanBtn.style.backgroundColor = '#dc3545';
-        scanBtn.style.borderColor = '#dc3545';
-        scanBtn.innerHTML = '<i class="fa fa-times" style="margin-right:6px;"></i>Cancel Scan';
-      } else {
-        scanStatus.style.display = 'none';
-        scanBtn.style.backgroundColor = '#028084';
-        scanBtn.style.borderColor = '#028084';
-        scanBtn.innerHTML = '<i class="fa fa-qrcode" style="margin-right:6px;"></i>Scan';
-        scanMsg.style.display = 'none';
-      }
-    });
+    if (scanBtn) {
+      scanBtn.addEventListener('click', function() {
+        scanActive = !scanActive;
+        if (scanActive) {
+          scanStatus.style.display = 'inline';
+          scanInput.style.position = 'absolute';
+          scanInput.style.left = '-9999px';
+          scanInput.value = '';
+          scanInput.focus();
+          scanBtn.style.backgroundColor = '#dc3545';
+          scanBtn.style.borderColor = '#dc3545';
+          scanBtn.innerHTML = '<i class="fa fa-times" style="margin-right:6px;"></i>Cancel Scan';
+        } else {
+          scanStatus.style.display = 'none';
+          scanBtn.style.backgroundColor = '#028084';
+          scanBtn.style.borderColor = '#028084';
+          scanBtn.innerHTML = '<i class="fa fa-qrcode" style="margin-right:6px;"></i>Scan';
+          scanMsg.style.display = 'none';
+        }
+      });
+    }
 
     scanInput.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {

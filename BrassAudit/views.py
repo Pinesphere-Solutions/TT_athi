@@ -288,7 +288,7 @@ class BrassAuditPickTableView(APIView):
             elif data.get('brass_audit_rejection') or data.get('brass_audit_few_cases_accptance') or data.get('brass_audit_accptance'):
                 data['lot_status'] = 'Yet to Release'
             elif data.get('brass_audit_accepted_qty_verified'):
-                data['lot_status'] = 'Released'
+                data['lot_status'] = 'Yet to Release'
             else:
                 data['lot_status'] = 'Yet to Start'
 

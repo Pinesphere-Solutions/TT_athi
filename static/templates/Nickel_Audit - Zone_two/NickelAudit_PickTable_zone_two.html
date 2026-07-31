@@ -932,7 +932,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                             style="border: 1px solid #dc3545; background-color: #f8d7da; color: #721c24; font-size: 13px; white-space: nowrap; padding: 5px;">
                           On Hold
                         </div>
-                      {% elif data.na_qc_rejection or data.na_qc_few_cases_accptance or data.na_qc_acceptance %}
+                      {% elif data.na_qc_rejection or data.na_qc_few_cases_accptance or data.na_qc_acceptance or data.na_ac_accepted_qty_verified %}
                         <div class="d-inline-block px-3 fw-semibold text-center rounded-pill"
                             style="border: 1px solid #0d5d17; background-color: #c5f9c2; color: #2f801b; font-size: 13px; white-space: nowrap; padding: 5px;">
                           Yet to Release
@@ -1454,6 +1454,188 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   });
   window.naRestoreRowPosition = restoreRowPosition;
+
+  // Hold/Unhold view icon click handler
+  document.querySelectorAll('.hold-remark-icon').forEach(function(icon) {
+    icon.addEventListener('click', function() {
+      var title = this.getAttribute('data-bs-original-title') || '';
+      if (title) {
+        Swal.fire({ icon: 'info', title: 'Hold / Release Remark', html: '<div style="text-align:left;">' + title.replace(/&#10;/g, '<br>') + '</div>', confirmButtonColor: '#028084' });
+      }
+    });
+  });
+
+  // Hold / Unhold Toggle with Remark
+  (function initHoldToggle() {
+    const holdModal = document.getElementById('holdRemarkModal');
+    const holdInput = document.getElementById('holdRemarkInput');
+    const holdError = document.getElementById('holdRemarkError');
+    const holdTitle = holdModal ? holdModal.querySelector('h5') : null;
+    const saveBtn = document.getElementById('saveHoldRemarkBtn');
+    const closeBtn = document.getElementById('closeHoldRemarkModal');
+
+    if (!holdModal || !holdInput || !saveBtn) return;
+
+    window.naHoldToggleState = null;
+
+    function attachHoldToggleListeners() {
+      document.querySelectorAll('.hold-toggle-btn').forEach(function(toggle) {
+        toggle.addEventListener('change', function(e) {
+          e.preventDefault();
+          const row = this.closest('tr');
+          const lotId = row ? row.getAttribute('data-stock-lot-id') : null;
+          if (!lotId) return;
+
+          // checked = active (not held), unchecked = held
+          const intendedHold = !this.checked;
+          const action = intendedHold ? 'hold' : 'unhold';
+
+          window.naHoldToggleState = {
+            toggle: this,
+            row: row,
+            lotId: lotId,
+            action: action,
+            originalChecked: !intendedHold
+          };
+          // Revert toggle visually until modal confirms
+          this.checked = !intendedHold;
+
+          if (holdTitle) holdTitle.textContent = action === 'hold' ? 'Hold Reason' : 'Release Reason';
+          holdInput.value = '';
+          if (holdError) holdError.textContent = '';
+          holdModal.style.display = 'flex';
+          holdInput.focus();
+        });
+      });
+    }
+
+    saveBtn.addEventListener('click', function() {
+      const state = window.naHoldToggleState;
+      if (!state) return;
+
+      const remark = holdInput.value.trim();
+      if (!remark) {
+        if (holdError) holdError.textContent = 'Remark is required.';
+        return;
+      }
+      if (remark.length > 50) {
+        if (holdError) holdError.textContent = 'Max 50 characters allowed.';
+        return;
+      }
+
+      saveBtn.disabled = true;
+      var holdCsrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+      fetch('/nickel_audit_zone_two/api/hold-unhold/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': holdCsrf
+        },
+        body: JSON.stringify({
+          lot_id: state.lotId,
+          action: state.action,
+          remark: remark
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        saveBtn.disabled = false;
+        if (data.success) {
+          holdModal.style.display = 'none';
+          Swal.fire({
+            icon: 'success',
+            title: state.action === 'hold' ? 'Lot Held' : 'Lot Released',
+            text: data.message,
+            timer: 1500,
+            showConfirmButton: false
+          });
+          setTimeout(function() { location.reload(); }, 1500);
+        } else {
+          if (holdError) holdError.textContent = data.error || 'Failed to save.';
+        }
+      })
+      .catch(function(err) {
+        saveBtn.disabled = false;
+        if (holdError) holdError.textContent = 'Network error.';
+        console.error('[NickelAuditZ2] Hold/Unhold error:', err);
+      });
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        holdModal.style.display = 'none';
+        window.naHoldToggleState = null;
+        if (typeof window.naRestoreRowPosition === 'function') {
+          window.naRestoreRowPosition();
+        }
+      });
+    }
+
+    holdModal.addEventListener('click', function(e) {
+      if (e.target === holdModal) {
+        holdModal.style.display = 'none';
+        window.naHoldToggleState = null;
+        if (typeof window.naRestoreRowPosition === 'function') {
+          window.naRestoreRowPosition();
+        }
+      }
+    });
+
+    attachHoldToggleListeners();
+  })();
+
+  // DELETE BUTTON HANDLER
+  document.querySelectorAll('.delete-batch-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const row = btn.closest('tr');
+      const lotId = btn.getAttribute('data-stock-lot-id');
+      if (!lotId) {
+        Swal.fire('Error', 'Lot ID not found!', 'error');
+        return;
+      }
+      if (row) row.classList.add('dp-row-action-highlight');
+      Swal.fire({
+        title: 'Are you sure?',
+        text: 'Do you really want to delete this lot?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+      }).then(function(result) {
+        if (!result.isConfirmed) return;
+        var deleteCsrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+        fetch('/nickel_audit_zone_two/api/delete-lot/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': deleteCsrf
+          },
+          body: JSON.stringify({ lot_id: lotId })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            if (row) row.remove();
+            Swal.fire({
+              icon: 'success',
+              title: 'Deleted!',
+              text: 'Lot has been deleted.',
+              timer: 1200,
+              showConfirmButton: false
+            });
+          } else {
+            Swal.fire('Error', data.error || 'Delete failed', 'error');
+          }
+        })
+        .catch(function() {
+          Swal.fire('Error', 'Network error. Please try again.', 'error');
+        });
+      });
+    });
+  });
 });
 </script>
 

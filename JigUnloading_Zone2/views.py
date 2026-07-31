@@ -106,7 +106,7 @@ class JU_Zone_MainTable(LoginRequiredMixin, TemplateView):
         Get dynamic tray capacity using InprocessInspectionTrayCapacity for overrides
         Rules:
         - Normal (or NR/NB/ND/NL): 20
-        - Jumbo  (or JR/JB/JD):    12
+        - Jumbo  (or JR/JB/JD):    16
         - Others: Use InprocessInspectionTrayCapacity or ModelMaster capacity
         """
         try:
@@ -115,7 +115,7 @@ class JU_Zone_MainTable(LoginRequiredMixin, TemplateView):
             if _tn in ('NORMAL', 'NR', 'NB', 'ND', 'NL', 'NW'):
                 return 20
             elif _tn in ('JUMBO', 'JR', 'JB', 'JD'):
-                return 12
+                return 16
             else:
                 # First try to get custom capacity for this tray type
                 custom_capacity = InprocessInspectionTrayCapacity.objects.filter(
@@ -3830,9 +3830,9 @@ def JU_Zone_validate_tray_id_dynamic(request):
                     if determined_capacity == 20:
                         valid_prefixes = ['NR-']
                         print(f"[DEBUG] JU_Zone IPS capacity Normal (20) detected - only 'NR-' allowed")
-                    elif determined_capacity == 12:
+                    elif determined_capacity == 16:
                         valid_prefixes = ['JR-']
-                        print(f"[DEBUG] JU_Zone IPS capacity Jumbo (12) detected - only 'JR-' allowed")
+                        print(f"[DEBUG] JU_Zone IPS capacity Jumbo (16) detected - only 'JR-' allowed")
                     else:
                         valid_prefixes = ['NR-', 'JR-']
                         print(f"[DEBUG] JU_Zone IPS detected - capacity unknown and tray_type unavailable, allowing both 'NR-' and 'JR-'")
@@ -4211,7 +4211,7 @@ class JU_Zone_Completedtable(LoginRequiredMixin, TemplateView):
         Get dynamic tray capacity using InprocessInspectionTrayCapacity for overrides
         Rules:
         - Normal (or NR/NB/ND/NL): 20
-        - Jumbo  (or JR/JB/JD):    12
+        - Jumbo  (or JR/JB/JD):    16
         - Others: Use InprocessInspectionTrayCapacity or ModelMaster capacity
         """
         try:
@@ -4220,7 +4220,7 @@ class JU_Zone_Completedtable(LoginRequiredMixin, TemplateView):
             if _tn in ('NORMAL', 'NR', 'NB', 'ND', 'NL', 'NW'):
                 return 20
             elif _tn in ('JUMBO', 'JR', 'JB', 'JD'):
-                return 12
+                return 16
 
             # First try to get custom capacity for this tray type
             custom_capacity = InprocessInspectionTrayCapacity.objects.filter(

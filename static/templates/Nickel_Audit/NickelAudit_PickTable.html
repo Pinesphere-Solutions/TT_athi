@@ -1005,7 +1005,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                             style="border: 1px solid #dc3545; background-color: #f8d7da; color: #721c24; font-size: 13px; white-space: nowrap; padding: 5px;">
                           On Hold
                         </div>
-                      {% elif data.na_qc_rejection or data.na_qc_few_cases_accptance or data.na_qc_acceptance %}
+                      {% elif data.na_qc_rejection or data.na_qc_few_cases_accptance or data.na_qc_acceptance or data.na_ac_accepted_qty_verified %}
                         <div class="d-inline-block px-3 fw-semibold text-center rounded-pill"
                             style="border: 1px solid #0d5d17; background-color: #c5f9c2; color: #2f801b; font-size: 13px; white-space: nowrap; padding: 5px;">
                           Yet to Release
@@ -3446,6 +3446,59 @@ document.addEventListener('DOMContentLoaded', function () {
 
     attachHoldToggleListeners();
   })();
+
+  // DELETE BUTTON HANDLER
+  document.querySelectorAll('.delete-batch-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const row = btn.closest('tr');
+      const lotId = btn.getAttribute('data-stock-lot-id');
+      if (!lotId) {
+        Swal.fire('Error', 'Lot ID not found!', 'error');
+        return;
+      }
+      if (row) row.classList.add('dp-row-action-highlight');
+      Swal.fire({
+        title: 'Are you sure?',
+        text: 'Do you really want to delete this lot?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+      }).then(function(result) {
+        if (!result.isConfirmed) return;
+        var deleteCsrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+        fetch('/nickel_audit/api/delete-lot/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': deleteCsrf
+          },
+          body: JSON.stringify({ lot_id: lotId })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            if (row) row.remove();
+            Swal.fire({
+              icon: 'success',
+              title: 'Deleted!',
+              text: 'Lot has been deleted.',
+              timer: 1200,
+              showConfirmButton: false
+            });
+          } else {
+            Swal.fire('Error', data.error || 'Delete failed', 'error');
+          }
+        })
+        .catch(function() {
+          Swal.fire('Error', 'Network error. Please try again.', 'error');
+        });
+      });
+    });
+  });
 });
 </script>
 

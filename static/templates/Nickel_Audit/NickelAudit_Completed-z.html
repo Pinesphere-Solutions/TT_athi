@@ -1,6 +1,4 @@
-{% extends "base.html" %} {% load static %}
-{% block body_extra_class %} force-footer-bottom-page{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% load static %} {% block content %}
 {% load stock_filters %} 
 
 <style nonce="{{ csp_nonce }}">
@@ -591,35 +589,8 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
   }
 }
 
-/* Nickel Audit model preview: show the full IV image without cropping */
-.model-image-tooltip .image-container {
-  width: 210px !important;
-  height: 190px !important;
-  overflow: visible !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-.model-image-tooltip .nickel-preview-img,
-.model-image-tooltip .model-preview-image {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 210px !important;
-  max-height: 120px !important;
-  object-fit: contain !important;
-  object-position: center !important;
-  overflow: visible !important;
-  clip-path: none !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  outline: none !important;
-}
+/* Nickel Audit model hover tooltip now uses the Day Planning inline-style
+   implementation directly (see markup below) — no CSS overrides needed. */
 
 #trayScanModal_DayPlanning .user-profile img {
   width: 64px !important;
@@ -633,98 +604,15 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
 }
 
 
-/* ================================================================
-   NICKEL AUDIT Z1/Z2 — DYNAMIC MODEL PREVIEW FINAL OVERRIDE
-   Compact tooltip, tablet-safe sizing, non-cropped images.
-   ================================================================ */
-.model-hover-trigger {
-  position: relative !important;
-}
-
-.model-image-tooltip {
-  width: auto !important;
-  height: auto !important;
-  padding: 48px 18px 18px !important;
-  gap: 8px !important;
-  box-sizing: border-box !important;
-  background: #fff !important;
-  border: 1px solid #ccc !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-  z-index: 10010 !important;
-  font-size: 12px !important;
-  line-height: 1.3 !important;
-  justify-content: center !important;
-  align-items: center !important;
-}
-
-.model-image-tooltip,
-.model-image-tooltip * {
-  font-size: 12px !important;
-}
-
-.model-image-tooltip .info-btn {
-  position: absolute !important;
-  top: 8px !important;
-  left: 8px !important;
-  z-index: 2 !important;
-}
-
-.model-image-tooltip .close-btn {
-  position: absolute !important;
-  top: 8px !important;
-  right: 8px !important;
-  z-index: 2 !important;
-}
-
-.model-image-tooltip .img-gallery {
-  width: 260px !important;
-  height: 210px !important;
-  min-height: 210px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: transparent !important;
-  border: 0 !important;
-  outline: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  filter: none !important;
-  box-sizing: border-box !important;
-}
-
-.model-image-tooltip .img-gallery img,
-.model-image-tooltip .nickel-preview-img,
-.model-image-tooltip .model-preview-image {
-  width: auto !important;
-  height: auto !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
-  object-fit: contain !important;
-  object-position: center !important;
-  display: block !important;
-  margin: auto !important;
-  padding: 0 !important;
-  border: 0 !important;
-  outline: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  filter: none !important;
-  background: transparent !important;
-}
-
 </style>
 
-<div class="content-wrapper force-footer-bottom-page">
+<div class="content-wrapper">
 
   <div class="row">
     <div class="col-12 grid-margin stretch-card">
       <div class="card">
         <div class="card-body" style="padding-bottom:12px;">
-          <h5 class="text-left mt-0 mb-4" style="font-weight:700;">Nickel Audit Completed Table - Zone II</h5>
+          <h5 class="text-left mt-0 mb-4" style="font-weight:700;">Nickel Audit Complete Table - Zone I</h5>
           <!-- 🔥 NEW: Date Filter Section -->
           <div class="calendar-bar">
             <div class="date-input-group">
@@ -877,24 +765,16 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                         <span style="display:inline-block; margin-top:4px;word-break: break-all;">{{ data.na_last_process_date_time|date:"h:i A" }}</span>
                         </td>
                                         <td >
-                      <span class="model-hover-trigger" data-plating-stk-no="{{ data.plating_stk_no }}" style="cursor: pointer; word-break: break-all;">
+                      <span class="model-hover-trigger" data-plating-stk-no="{{ data.plating_stk_no }}" style="cursor: pointer; word-break: break-all; position: relative;">
                         {{ data.plating_stk_no|highlight_plating_color|safe_html }}
                         <div class="model-image-tooltip" style="position: absolute; left: 80%; top: 110%; transform: translateX(-50%); background: #fff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 18px; z-index: 10010; display: flex; align-items: center; gap: 8px; opacity: 0; pointer-events: none; transition: opacity 0.2s;">
-                          
-                          <!-- Header with Info and Close buttons - Initially hidden -->
-                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <button class="info-btn" style="background: #007bff; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; display: none;">
-                              Info
-                            </button>
-                            <button class="close-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; display: none;">
-                               Close
-                            </button>
-                          </div>
-                          <!-- Image gallery section -->
-                          <div style="display: flex; align-items: center; gap: 8px;">
-                            <!-- Hide scroll buttons since only one image is shown -->
-                            <div class="img-gallery" style="display: flex; justify-content:center; align-items:center; gap: 6px; overflow: hidden; width: 260px; height: 210px; min-height: 210px; padding:0; margin:0; border:0; outline:0; border-radius:0; box-shadow:none; filter:none; background:transparent; box-sizing:border-box;"></div>
-                          </div>
+                          <button class="close-btn" style="position:absolute; top:8px; right:8px;">Close</button>
+                          <button class="info-btn" style="position:absolute; top:8px; left:8px;">Info</button>
+                          <button class="img-scroll-left" style="display:none; background: none; border: none; font-size: 20px; cursor: pointer;">&#8592;</button>
+                          <div class="img-gallery" style="display: flex; justify-content:center; align-items:center; gap: 6px; overflow: hidden; width: 260px; height: 210px; min-height: 210px; padding:0; margin:0; border:0; outline:0; border-radius:0; box-shadow:none; filter:none; background:transparent; box-sizing:border-box;">
+  <span class="model-preview-loading" style="font-size:12px;color:#777;text-align:center;">Loading...</span>
+</div>
+                          <button class="img-scroll-right" style="display:none; background: none; border: none; font-size: 20px; cursor: pointer;">&#8594;</button>
                         </div>
                       </span>
                     </td>
@@ -1053,7 +933,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                           </a>
                     </td>
                     <td>
-                      {% if data.na_ac_accepted_qty_verified  %}
+                      {% if data.lot_status == 'Released' %}
                         <div class="d-inline-block px-3 fw-semibold text-center rounded-pill"
                            style="border: 1px solid #0d5d17; background-color: #c5f9c2; color: #2f801b; font-size: 13px; white-space: nowrap; padding: 5px;">
                           Released
@@ -1250,8 +1130,6 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
       </div>
     </div>
   </div>
-  <!-- content-wrapper ends -->
-</div>
   <!-- Image Slider Modal (popup) -->
   <div id="imageSliderModal" class="image-slider-modal">
     <span id="closeImageSliderModal" class="modal-close-BQ">&times;</span>
@@ -1621,7 +1499,7 @@ function getValidationConfig() {
     console.log(`   AfterCheck Parameters: lot_id=${stockLotId}`);
     
     return {
-      endpoint: "/nickel_audit_zone_two/pick_complete_tray_validate/",
+      endpoint: "/nickel_audit/pick_complete_tray_validate/",
       dataSource: "BrassTrayId",
       params: {
         lot_id: stockLotId
@@ -1632,7 +1510,7 @@ function getValidationConfig() {
     console.log(`   Pick Parameters: lot_id=${stockLotId}`);
     
     return {
-      endpoint: "/nickel_audit_zone_two/pick_complete_tray_validate/",
+      endpoint: "/nickel_audit/pick_complete_tray_validate/",
       dataSource: "JigUnload_TrayId", 
       params: {
         lot_id: stockLotId
@@ -1895,7 +1773,7 @@ document.addEventListener("DOMContentLoaded", function () {
             modalUserImg.alt = resolvedImage.alt;
           } else {
             modalUserImg.removeAttribute('src');
-            modalUserImg.alt = 'Coming Soon';
+            modalUserImg.alt = 'Image unavailable';
           }
         };
         modalUserImg.removeAttribute('src');
@@ -1920,7 +1798,7 @@ document.addEventListener("DOMContentLoaded", function () {
           .catch(function () {
             if (modal.dataset.activePlatingStkNo !== stockNo) return;
             modalUserImg.removeAttribute('src');
-            modalUserImg.alt = 'Coming Soon';
+            modalUserImg.alt = 'Image unavailable';
           });
       }
 
@@ -1962,7 +1840,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (isVerified) {
         // AFTER CHECK: Use BrassTrayId data with Brass QC parameters
-        trayListEndpoint = '/nickel_audit_zone_two/pick_CompleteTable_tray_id_list/';
+        trayListEndpoint = '/nickel_audit/pick_CompleteTable_tray_id_list/';
         dataSource = 'BrassTrayId';
         
         // Get Brass QC status from row data attributes
@@ -1976,7 +1854,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log(`   Parameters:`, apiParams);
       } else {
         // PICK MODE: Use TrayId data with IP stock parameters  
-        trayListEndpoint = '/nickel_audit_zone_two/pick_CompleteTable_tray_id_list/';
+        trayListEndpoint = '/nickel_audit/pick_CompleteTable_tray_id_list/';
         dataSource = 'TrayId (IPTrayId)';
 
         apiParams = {
@@ -2732,7 +2610,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const imageUrl = normalizeImageUrl(rawUrl);
 
     if (!imageUrl) {
-      renderMessage(trigger, "Coming Soon");
+      renderMessage(trigger, "Image unavailable");
       return;
     }
 
@@ -2859,7 +2737,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (error && error.name === "AbortError") {
           renderMessage(trigger, "Image request timed out");
         } else {
-          renderMessage(trigger, "Coming Soon");
+          renderMessage(trigger, "Image unavailable");
         }
       });
   }
