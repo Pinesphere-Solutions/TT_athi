@@ -825,8 +825,10 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                     </span>
                     {% if data.send_to_nickel_brass %}
                       <i class="fa fa-times-circle" style="color: #028084; font-size:13px;" data-bs-toggle="tooltip" data-placement="right" data-bs-original-title="Audit"></i>
+                      {% elif data.rejected_ip_stock %}
+                      <i class="fa fa-info-circle" style="color: #f39c12; font-size:13px;" data-bs-toggle="tooltip" data-placement="right" data-bs-original-title="NA"></i>
                       {% endif %}
-                  </td>                     
+                  </td>
                     <td {% if data.nq_hold_lot %} class="row-inactive-blur" {% endif %} style="white-space:normal;word-break:break-all;">
                       {% if data.send_to_nickel_brass %}
                         {{ data.na_last_process_date_time|date:"d-M-y" }}<br>
@@ -1846,7 +1848,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const imageUrl = normalizeImageUrl(rawUrl);
 
     if (!imageUrl) {
-      renderMessage(trigger, "Image unavailable");
+      renderMessage(trigger, "Coming Soon");
       return;
     }
 
@@ -1972,7 +1974,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (error && error.name === "AbortError") {
           renderMessage(trigger, "Image request timed out");
         } else {
-          renderMessage(trigger, "Image unavailable");
+          renderMessage(trigger, "Coming Soon");
         }
       });
   }
@@ -2345,9 +2347,6 @@ document.addEventListener("DOMContentLoaded", function () {
       if (viewModal) viewModal.classList.remove('open');
     }
     if (closeViewBtn) closeViewBtn.addEventListener('click', closeViewModal);
-    if (viewModal) viewModal.addEventListener('click', function (e) {
-      if (e.target === viewModal) closeViewModal();
-    });
 
     /* IV-only model image for the modal header — reuses the same shared
        hover-preview endpoint/cache/normalizer as the plating-stk-no hover,
@@ -2498,6 +2497,8 @@ document.addEventListener("DOMContentLoaded", function () {
           focusCancel: true,
           confirmButtonColor: '#0c8249',
           cancelButtonColor: '#6c757d',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
         }).then(function (result) {
           if (!result.isConfirmed) return;
           btn.disabled = true;
@@ -2594,7 +2595,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (modalClose) modalClose.addEventListener('click', closeModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
 
     document.querySelectorAll('.tray-scan-btn.btn-reject-is').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -3553,13 +3553,6 @@ document.addEventListener('DOMContentLoaded', function () {
         window.nqHoldToggleState = null;
       });
     }
-
-    holdModal.addEventListener('click', function (e) {
-      if (e.target === holdModal) {
-        holdModal.style.display = 'none';
-        window.nqHoldToggleState = null;
-      }
-    });
   })();
 });
 </script>

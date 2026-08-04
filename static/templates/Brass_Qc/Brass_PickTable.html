@@ -1339,6 +1339,11 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                           style="border: 1px solid #dc3545; background-color: #f8d7da; color: #721c24; font-size: 13px; white-space: nowrap; padding: 5px;">
                           On Hold
                         </div>
+                      {% elif data.lot_status == 'In Progress' %}
+                        <div class="d-inline-block px-3 fw-semibold text-center rounded-pill"
+                            style="border: 1px solid #0c8249; background-color: #e6f4ea; color: #0c8249; font-size: 13px; white-space: nowrap; padding: 5px;">
+                          In Progress
+                        </div>
                       {% elif data.lot_status == 'Yet to Release' %}
                         <div class="d-inline-block px-3 fw-semibold text-center rounded-pill"
                             style="border: 1px solid #f9a825; background-color: #fff8e1; color: #b26a00; font-size: 13px; white-space: nowrap; padding: 5px;">
@@ -2099,6 +2104,8 @@ document.addEventListener('DOMContentLoaded', function() {
           cancelButtonColor: '#6c757d',
           confirmButtonText: 'Yes, Accept',
           cancelButtonText: 'Cancel',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
         }).then(async function(result) {
           if (!result.isConfirmed) return;
 
@@ -2293,6 +2300,8 @@ document.addEventListener('DOMContentLoaded', function() {
       cancelButtonColor: '#3085d6',
       confirmButtonText: 'Yes, delete it!',
       cancelButtonText: 'Cancel',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
     }).then(function(result) {
       if (!result.isConfirmed) return;
 
@@ -2549,21 +2558,6 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.style.display = 'none';
         modal.classList.remove('open');
         // ✅ Restore row position when closing view modal
-        if (typeof window.bqRestoreRowPosition === 'function') {
-          window.bqRestoreRowPosition();
-        }
-      }
-    });
-  }
-
-  // Close on backdrop click
-  const modal = document.getElementById('trayScanModal_DayPlanning');
-  if (modal) {
-    modal.addEventListener('click', function(event) {
-      if (event.target === modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('open');
-        // ✅ Restore row position when closing via backdrop
         if (typeof window.bqRestoreRowPosition === 'function') {
           window.bqRestoreRowPosition();
         }
@@ -3743,6 +3737,35 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }, true);
 
+    document.addEventListener('keydown', function(event) {
+      if (!overlay || overlay.style.display === 'none') return;
+      if (document.querySelector('.swal2-container')) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      const key = event.key || '';
+      let handled = false;
+
+      if (key === 'd' || key === 'D') {
+        if (draftSaveBtn && !draftSaveBtn.disabled) {
+          draftSaveBtn.click();
+          handled = true;
+        }
+      } else if (key === 'o' || key === 'O') {
+        handled = restoreClearUndoSnapshot();
+      } else if (key === 'c' || key === 'C') {
+        if (globalClearAllBtn && !globalClearAllBtn.disabled) {
+          globalClearAllBtn.click();
+          handled = true;
+        }
+      }
+
+      if (handled) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+      }
+    }, true);
+
     if (draftSaveBtn) {
       draftSaveBtn.addEventListener('click', function() {
         errorDiv.textContent = '';
@@ -4071,14 +4094,6 @@ document.addEventListener('DOMContentLoaded', function() {
         window.holdToggleState = null;
       });
     }
-
-    // Close on backdrop click
-    holdModal.addEventListener('click', function(e) {
-      if (e.target === holdModal) {
-        holdModal.style.display = 'none';
-        window.holdToggleState = null;
-      }
-    });
 
     attachHoldToggleListeners();
   })();
