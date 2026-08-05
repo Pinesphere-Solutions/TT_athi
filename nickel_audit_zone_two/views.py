@@ -141,7 +141,16 @@ def _na_completed_source_lot_ids(allowed_color_ids):
             plating_color_id__in=allowed_color_ids,
         )
         .filter(_na_completed_filter_q())
-        .only('lot_id', 'combine_lot_ids')
+        # A Full Reject from Audit (Nickel_Audit.views._na_do_submit_full_reject,
+        # shared by this zone's action API) routes the lot back to Nickel
+        # Wiping for rework: current_stage is set to 'Nickel Wiping' and the
+        # nq_qc_* flags are cleared, while na_qc_rejection is left permanently
+        # True as a historical marker. Without this exclusion that stale flag
+        # keeps the lot's original source id blacklisted here forever, hiding
+        # any later Nickel Wiping resubmission (fresh partial-accept child) for
+        # the same source lot from this pick table.
+        .exclude(current_stage='Nickel Wiping')
+        .only('lot_id', 'combine_lot_ids', 'current_stage')
     )
     for completed_row in completed_rows:
         completed_sources.update(_source_lot_ids(completed_row))

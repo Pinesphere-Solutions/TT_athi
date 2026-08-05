@@ -1239,6 +1239,20 @@ def _nq_do_submit_reject(request, lot_id, juat):
     except ValueError as exc:
         return Response({'success': False, 'error': str(exc)}, status=400)
 
+    # A tray ID may be used in only one of reject / accept / delink for this
+    # submission — catches a tray double-booked across sections that each
+    # individual normalize_* call (which only checks duplicates within its own
+    # list) would miss.
+    reject_ids = {(rt.get('tray_id') or '').upper() for rt in reject_trays}
+    delink_ids = {(dt.get('tray_id') or '').upper() for dt in delink_trays_snapshot}
+    accept_ids = {(at.get('tray_id') or '').upper() for at in accept_trays}
+    cross_dupes = (reject_ids & delink_ids) | (reject_ids & accept_ids) | (delink_ids & accept_ids)
+    if cross_dupes:
+        return Response(
+            {'success': False, 'error': f"Tray(s) {', '.join(sorted(cross_dupes))} used in more than one section"},
+            status=400,
+        )
+
     if tray_qty_total(reject_trays) != rejected_qty:
         return Response({'success': False, 'error': 'Reject tray total does not match rejected qty'}, status=400)
     if tray_qty_total(accept_trays) != accepted_qty:
@@ -1246,7 +1260,9 @@ def _nq_do_submit_reject(request, lot_id, juat):
 
     for rt in reject_trays:
         tid = (rt.get('tray_id') or '').upper()
-        if tid not in reused_tray_ids and not tid.startswith(allowed_prefix):
+        # Reused original trays must also carry an NB/JB code to be reject-eligible —
+        # JR/JD/JL originals cannot be reused as their own reject container.
+        if not tid.startswith(allowed_prefix):
             return Response(
                 {'success': False, 'error': f'Reject tray {tid} must start with {allowed_prefix}'},
                 status=400,

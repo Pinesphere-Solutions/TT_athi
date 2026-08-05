@@ -2761,12 +2761,31 @@ class JigLoadInitAPI(APIView):
 		lot_id = payload.get('lot_id')
 		batch_id = payload.get('batch_id')
 		jig_capacity_override = payload.get('jig_capacity')
-		broken_hooks = int(payload.get('broken_hooks', 0) or 0)
 		multi_model_flag = payload.get('multi_model', False)
 		secondary_lots = payload.get('secondary_lots', [])
 
 		if not lot_id or not batch_id:
 			return Response({'error': 'lot_id and batch_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+		# 0. Check for existing draft up front (single source of truth) — needed below to
+		# resolve the default broken_hooks so a re-opened draft renders the SAME split-panel
+		# layout (delink/excess slot counts) it had when saved. Without this, effective_capacity
+		# is recomputed with broken_hooks=0 on every open, shifting the excess-panel slot count
+		# and breaking positional restore of previously-scanned excess trays (see JigSaveAPI GET).
+		draft = JigCompleted.objects.filter(
+			batch_id=batch_id, lot_id=lot_id, user=request.user, draft_status__in=['draft', 'active']
+		).first()
+
+		# Prefer an explicit broken_hooks from the frontend (live BH preview / recalculation).
+		# Otherwise fall back to the saved draft's broken_hooks — but ONLY for a plain reopen,
+		# never for a fresh multi-model merge (secondary_lots present), so stale BH from a prior
+		# single-model draft never bleeds into a brand-new "Add Model" combination.
+		if 'broken_hooks' in payload:
+			broken_hooks = int(payload.get('broken_hooks', 0) or 0)
+		elif draft and not secondary_lots:
+			broken_hooks = int(getattr(draft, 'broken_hooks', 0) or 0)
+		else:
+			broken_hooks = 0
 
 		logging.info(json.dumps({
 			'event': 'JIG_LOAD_INIT',
@@ -2863,13 +2882,6 @@ class JigLoadInitAPI(APIView):
 						logging.info(f'[INIT_EXCESS_LOT] Batch {batch_id} auto-detected — using half_filled tray info: {len(trays)} tray(s), qty={lot_qty}')
 			except Exception:
 				logging.exception('[INIT_EXCESS_LOT] Failed to check submitted JigCompleted — continuing with normal flow')
-
-		# 2. Check for existing draft in JigCompleted (single source of truth)
-		draft = JigCompleted.objects.filter(
-			batch_id=batch_id, lot_id=lot_id, user=request.user, draft_status__in=['draft', 'active']
-		).first()
-		# STRICT: NEVER load broken_hooks from draft — only from explicit frontend payload.
-		# This prevents stale BH from previous sessions bleeding into fresh init.
 
 		# 3. Core computation — single source of truth
 		computed = compute_jig_loading(trays, jig_capacity, broken_hooks, tray_capacity)
@@ -4145,6 +4157,30 @@ class JigSaveAPI(APIView):
 						scanned_tray_id=tray_id_val,
 					)
 					delink_created += 1
+
+					# Propagate delink status to the shared tray master and Day Planning's
+					# tray history so the tray becomes assignable again outside Jig Loading.
+					# (Mirrors the pattern used by InputScreening/IQF/Recovery_BrassAudit.)
+					try:
+						from DayPlanning.models import DPTrayId_History
+						source_lot_id = tray.get('source_lot_id', '') or lot_id
+
+						tray_obj = TrayId.objects.filter(tray_id=tray_id_val).first()
+						if tray_obj:
+							tray_obj.delink_tray = True
+							tray_obj.lot_id = None
+							tray_obj.batch_id = None
+							tray_obj.scanned = False
+							tray_obj.top_tray = False
+							tray_obj.save(update_fields=[
+								'delink_tray', 'lot_id', 'batch_id', 'scanned', 'top_tray'
+							])
+
+						DPTrayId_History.objects.filter(
+							tray_id=tray_id_val, lot_id=source_lot_id
+						).update(delink_tray=True)
+					except Exception:
+						logging.exception(f'JigSaveAPI: tray delink propagation failed for tray_id={tray_id_val}')
 				logging.info(json.dumps({'event': 'JIG_DELINK_RECORDS_CREATED', 'count': delink_created}))
 			except Exception as e:
 				logging.exception(f'JigSaveAPI: delink records failed: {e}')

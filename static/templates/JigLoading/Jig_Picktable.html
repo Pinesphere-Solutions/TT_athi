@@ -7511,7 +7511,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const resolved = resolvePreviewImage(payload);
     if (!gallery) return;
     if (!resolved || !resolved.url) {
-      renderMessage(trigger, "Image unavailable");
+      renderMessage(trigger, "Coming Soon !");
       return;
     }
     gallery.textContent = "";
@@ -7521,7 +7521,7 @@ document.addEventListener("DOMContentLoaded", function () {
     image.decoding = "async";
     image.style.cssText = "width:120px;height:120px;object-fit:contain;object-position:center;display:block;";
     image.addEventListener("error", function() {
-      renderMessage(trigger, "Image unavailable");
+      renderMessage(trigger, "Coming Soon !");
     }, { once: true });
     gallery.appendChild(image);
   }
@@ -7554,7 +7554,7 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .catch(function(error) {
         console.error("[Jig Loading Pick] Model preview failed:", error);
-        renderMessage(trigger, "Image unavailable");
+        renderMessage(trigger, "Coming Soon !");
       });
   }
 
@@ -9345,6 +9345,7 @@ if (window.jQuery) {
             lot_id: data.lot_id || lotId,
             batch_id: data.batch_id || batchId,
             jig_capacity: parseInt(data.jig_capacity || 0) || 0,
+            broken_hooks: parseInt(data.broken_hooks || 0) || 0,
             multi_model: true,
             secondary_lots: secondaryLots,
           }, function(initData) {

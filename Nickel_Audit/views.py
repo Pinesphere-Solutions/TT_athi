@@ -351,7 +351,16 @@ def _na_completed_source_lot_ids(allowed_color_ids):
             plating_color_id__in=allowed_color_ids,
         )
         .filter(_na_completed_filter_q())
-        .only('lot_id', 'combine_lot_ids')
+        # A Full Reject from Audit routes the lot back to Nickel Wiping for
+        # rework (see _na_do_submit_full_reject: current_stage set to
+        # 'Nickel Wiping', nq_qc_* flags cleared) while leaving na_qc_rejection
+        # permanently True as a historical marker. Without this exclusion that
+        # stale flag keeps the lot's original source id blacklisted here
+        # forever, so any later Nickel Wiping resubmission for the same source
+        # (fresh partial-accept child) is wrongly hidden from the Audit pick
+        # table as a "duplicate" of an already-completed source.
+        .exclude(current_stage='Nickel Wiping')
+        .only('lot_id', 'combine_lot_ids', 'current_stage')
     )
     for completed_row in completed_rows:
         completed_sources.update(_na_source_lot_ids(completed_row))
@@ -368,16 +377,24 @@ def _na_partial_accept_child_maps(rows):
         Q(parent_lot_id__in=visible_lot_ids) | Q(new_lot_id__in=visible_lot_ids)
     ).values('parent_lot_id', 'new_lot_id', 'accepted_qty')
 
-    parents_with_visible_child = set()
+    closed_parent_lots = set()
     child_meta_by_lot = {}
     for partial_row in partial_rows:
         parent_lot_id = str(partial_row.get('parent_lot_id') or '').strip()
         child_lot_id = str(partial_row.get('new_lot_id') or '').strip()
+        if parent_lot_id and parent_lot_id in visible_lot_ids:
+            # This row already performed its partial split — the accepted
+            # continuation lives in the child (new_lot_id), so the parent is
+            # permanently closed. It must stay excluded even when the child
+            # (or a further descendant, in a multi-generation re-entry chain
+            # such as Wiping -> Audit full-reject -> back to Wiping -> Wiping
+            # partial-accept again) is not itself visible in this queryset —
+            # otherwise the closed parent wrongly reappears as a fresh
+            # candidate and "reserves" the source lot ahead of the real child.
+            closed_parent_lots.add(parent_lot_id)
         if child_lot_id and child_lot_id in visible_lot_ids:
-            if parent_lot_id:
-                parents_with_visible_child.add(parent_lot_id)
             child_meta_by_lot[child_lot_id] = partial_row
-    return parents_with_visible_child, child_meta_by_lot
+    return closed_parent_lots, child_meta_by_lot
 
 
 def _na_active_pick_rows(queryset, completed_source_lots, zone_label):
@@ -1416,6 +1433,20 @@ def _na_do_submit_reject(request, lot_id, juat):
         validate_original_tray_coverage(accept_trays, delink_trays_snapshot, orig_trays)
     except ValueError as exc:
         return Response({'success': False, 'error': str(exc)}, status=400)
+
+    # A tray ID may be used in only one of reject / accept / delink for this
+    # submission — catches a tray double-booked across sections that each
+    # individual normalize_* call (which only checks duplicates within its own
+    # list) would miss.
+    reject_ids = {(rt.get('tray_id') or '').upper() for rt in reject_trays}
+    delink_ids = {(dt.get('tray_id') or '').upper() for dt in delink_trays_snapshot}
+    accept_ids = {(at.get('tray_id') or '').upper() for at in accept_trays}
+    cross_dupes = (reject_ids & delink_ids) | (reject_ids & accept_ids) | (delink_ids & accept_ids)
+    if cross_dupes:
+        return Response(
+            {'success': False, 'error': f"Tray(s) {', '.join(sorted(cross_dupes))} used in more than one section"},
+            status=400,
+        )
 
     if tray_qty_total(reject_trays) != rejected_qty:
         return Response({'success': False, 'error': 'Reject tray total does not match rejected qty'}, status=400)
