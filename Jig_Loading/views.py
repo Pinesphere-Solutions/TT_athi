@@ -485,6 +485,16 @@ class JigView(TemplateView):
 								if mlot in all_excess_new_lot_ids:
 									submitted_excess_lot_ids.add(mlot)
 
+				# Bulk prefetch TotalStockModel rows for real EX-* lot ids (no N+1).
+				# Hold/unhold state (jig_hold_lot, reasons, audit fields) is SSOT on
+				# these rows — the excess loop below must render it, not hardcode False,
+				# otherwise a held excess lot loses its row blur after page refresh.
+				if all_excess_new_lot_ids:
+					for s in TotalStockModel.objects.filter(
+						lot_id__in=list(all_excess_new_lot_ids)
+					).select_related('batch_id', 'batch_id__model_stock_no', 'jig_hold_by', 'jig_release_by'):
+						excess_stock_map.setdefault(s.lot_id, s)
+
 				for jc in submitted_with_excess:
 					# For multi-model, find which source lot the excess trays belong to
 					# by cross-referencing half_filled_tray_info tray_ids with all tray data
@@ -540,6 +550,10 @@ class JigView(TemplateView):
 					# Exact selected lots are excluded by lot_id above. Same/ditto PSNs remain eligible
 					# so Add Model can show available excess partial-draft lots for the same model.
 
+					# Hold/unhold state comes from the EX-* lot's TotalStockModel row (SSOT).
+					# Falls back to unheld when no stock row exists (legacy excess lots).
+					hold_src = excess_stock_map.get(real_excess_lot_id)
+
 					excess_data = {
 						'batch_id': jc.batch_id,
 						'stock_lot_id': real_excess_lot_id,
@@ -553,10 +567,14 @@ class JigView(TemplateView):
 						'brass_audit_last_process_date_time': jc.updated_at,
 						'model_stock_no': getattr(batch, 'model_stock_no', None) if batch else None,
 						'model_images': [],
-						'jig_hold_lot': False,
-						'jig_holding_reason': '',
-						'jig_release_lot': False,
-						'jig_release_reason': '',
+						'jig_hold_lot': getattr(hold_src, 'jig_hold_lot', False) if hold_src else False,
+						'jig_holding_reason': (getattr(hold_src, 'jig_holding_reason', '') or '') if hold_src else '',
+						'jig_release_lot': getattr(hold_src, 'jig_release_lot', False) if hold_src else False,
+						'jig_release_reason': (getattr(hold_src, 'jig_release_reason', '') or '') if hold_src else '',
+						'jig_hold_by': hold_src.jig_hold_by.username if hold_src and getattr(hold_src, 'jig_hold_by', None) else '',
+						'jig_hold_at': timezone.localtime(hold_src.jig_hold_at).strftime("%d-%b-%Y %I:%M %p") if hold_src and getattr(hold_src, 'jig_hold_at', None) else '',
+						'jig_release_by': hold_src.jig_release_by.username if hold_src and getattr(hold_src, 'jig_release_by', None) else '',
+						'jig_release_at': timezone.localtime(hold_src.jig_release_at).strftime("%d-%b-%Y %I:%M %p") if hold_src and getattr(hold_src, 'jig_release_at', None) else '',
 						'previous_module': 'Brass Audit',
 						'previous_module_remark': getattr(stock, 'BA_pick_remarks', '') if stock else '',
 						'is_excess_lot': True,

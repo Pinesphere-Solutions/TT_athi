@@ -757,10 +757,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                       <span style="display:flex; align-items:center; gap:3px;">
                         <span class="sno-value">{{ page_obj.start_index|add:forloop.counter0 }}</span>
                       </span>
-                      {% if data.iqf_acceptance or data.send_brass_qc %}
-                        <i class="fa fa-info-circle" style="color: #028084; font-size:13px;" data-bs-toggle="tooltip" data-placement="right" data-bs-original-title="IQF"></i>
-                      {% endif %}
-                    </td>  
+                    </td>
                     
                     <!-- 2. Last Updated -->
                     <td style="white-space:normal;word-break:break-all;">

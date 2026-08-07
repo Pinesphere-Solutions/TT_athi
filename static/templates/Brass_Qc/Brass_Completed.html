@@ -4004,10 +4004,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const trayDetailsDiv = document.getElementById('trayScanDetails_DayPlanning');
 
             // Update modal header information
-            document.getElementById('modalModelNo_DayPlanning').textContent = modelNo || '-';
-            document.getElementById('modalLotQty_DayPlanning').textContent = totalBatchQuantity || '0';
-            document.getElementById('modalMissingQty_DayPlanning').textContent = missingQty || '0';
-            document.getElementById('modalPhysicalQty_DayPlanning').textContent = physicalQty || '0';
+            const modalModelNoEl = document.getElementById('modalModelNo_DayPlanning');
+            const modalLotQtyEl = document.getElementById('modalLotQty_DayPlanning');
+            const modalMissingQtyEl = document.getElementById('modalMissingQty_DayPlanning');
+            const modalPhysicalQtyEl = document.getElementById('modalPhysicalQty_DayPlanning');
+            if (modalModelNoEl) modalModelNoEl.textContent = modelNo || '-';
+            if (modalLotQtyEl) modalLotQtyEl.textContent = totalBatchQuantity || '0';
+            if (modalMissingQtyEl) modalMissingQtyEl.textContent = missingQty || '0';
+            if (modalPhysicalQtyEl) modalPhysicalQtyEl.textContent = physicalQty || '0';
 
             // Use the same shared IV resolver for the eye-click modal.
             await loadBrassCompletedIvImage(modal, modelNo);

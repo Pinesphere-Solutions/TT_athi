@@ -1337,6 +1337,7 @@ box-shadow: 2px 0 8px rgba(0,0,0,0.04);
                       <div class="nq-alloc-col nq-alloc-accept">
                         <h6 style="margin:0 0 4px; font-weight:600; color:#388e3c; font-size:13px;"><i class="fa fa-check-circle"></i> Accept Trays (Scan only Top Tray) <span style="float:right; font-size:12px; color:#2e7d32;">Qty: <strong id="nqAcceptTotalQtyLabel">0</strong></span></h6>
                         <p style="margin:0 0 6px; font-size:10px; color:#999; font-style:italic;">Accepted -> Nickel Audit</p>
+                        <p id="nqAcceptLockInfo" style="margin:0 0 6px; font-size:11px; color:#e65100; display:none;"></p>
                         <div id="nqAcceptSlotsContainer" class="nq-alloc-body"></div>
                       </div>
                     </div>
@@ -2467,6 +2468,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var delinkSection = document.getElementById('nqDelinkSection');
     var delinkList = document.getElementById('nqDelinkListContainer');
     var reuseInfo = document.getElementById('nqRejectReuseInfo');
+    var acceptLockInfo = document.getElementById('nqAcceptLockInfo');
     var rejectQtyLabel = document.getElementById('nqRejectTotalQtyLabel');
     var acceptQtyLabel = document.getElementById('nqAcceptTotalQtyLabel');
     var combAccept = document.getElementById('nqCombinedAcceptQty');
@@ -2484,6 +2486,7 @@ document.addEventListener("DOMContentLoaded", function () {
       rejPrefix: 'NB', rejCap: 16,
       reasons: [], origTrays: [], rejectSlots: [], acceptSlots: [],
       reuseTrays: [], allocDone: false, acceptAutoTrays: [], autoDelinkIds: [], delinkSlots: [],
+      origAllTrays: [],
       pendingRestore: null,
     };
     var lastFocusedTrayInput = null;
@@ -2670,6 +2673,7 @@ document.addEventListener("DOMContentLoaded", function () {
           state.acceptAutoTrays = data.accept_auto_trays || [];
           state.autoDelinkIds = data.auto_delink_tray_ids || [];
           state.delinkSlots = data.delink_slots || [];
+          state.origAllTrays = data.original_trays || [];
           state.reuseTrays = [];
           state.rejPrefix = data.rej_prefix || 'NB';
           state.rejCap = data.rej_cap || 16;
@@ -2705,11 +2709,16 @@ document.addEventListener("DOMContentLoaded", function () {
         inp.disabled = isReused;
         if (wrap) wrap.style.display = isReused ? 'none' : '';
       });
+      // Qty must come from the tray actually scanned into the slot, not the
+      // slot's originally-expected tray — an operator may scan a different
+      // (skipped-over) original tray into a delink slot, and that tray can
+      // carry a different quantity than the one the backend guessed for it.
+      var origQtyById = {};
+      (state.origAllTrays || []).forEach(function (t) { origQtyById[t.tray_id] = t.qty; });
       return activeDelinkInputs().map(function (inp) {
-        return {
-          tray_id: inp.value.trim().toUpperCase(),
-          qty: parseInt(inp.dataset.qty, 10) || 0,
-        };
+        var tid = inp.value.trim().toUpperCase();
+        var qty = origQtyById.hasOwnProperty(tid) ? origQtyById[tid] : (parseInt(inp.dataset.qty, 10) || 0);
+        return { tray_id: tid, qty: qty };
       }).filter(function (row) { return row.tray_id && row.qty > 0; });
     }
 
@@ -2845,10 +2854,37 @@ document.addEventListener("DOMContentLoaded", function () {
         reuseInfo.style.display = 'none';
       }
 
+      // A Delink Tray ID that gets scanned and then removed (input cleared or
+      // swapped) invalidates any Accept top-tray already scanned against the
+      // now-stale Delink state — clear it so no stale accept data survives.
+      if (requiredDelinkCount > 0 && delinkRows.length < requiredDelinkCount) {
+        var topAccInput = acceptSlotsCont.querySelector('.nq-acc-tray-input');
+        if (topAccInput) topAccInput.value = '';
+      }
+
       var delinkedIdSet = delinkRows.map(function (row) { return row.tray_id; });
-      var filteredAutoTrays = (state.acceptAutoTrays || []).filter(function (t) {
-        return delinkedIdSet.indexOf(t.tray_id) === -1;
+      // Auto-fill candidates must track the trays actually scanned into Delink,
+      // not blindly replay the backend's static ascending-order guess
+      // (state.acceptAutoTrays) — that guess assumed a specific original tray
+      // (e.g. NB-A00002) would be delinked. If the operator instead delinks a
+      // different original tray, NB-A00002 was effectively "skipped": it must
+      // fall back into the accept pool instead of vanishing, while whatever
+      // tray was actually scanned for delink must never appear as an accept
+      // candidate, however the backend originally planned it.
+      var reusedRejectIds = getRejectReuseTrayIds();
+      var expectedDelinkIds = (state.delinkSlots || []).map(function (slot) { return slot.tray_id; });
+      var skippedExpectedDelinkIds = expectedDelinkIds.filter(function (id) {
+        return delinkedIdSet.indexOf(id) === -1 && reusedRejectIds.indexOf(id) === -1;
       });
+      var origById = {};
+      (state.origAllTrays || []).forEach(function (t) { origById[t.tray_id] = t; });
+      var filteredAutoTrays = (state.acceptAutoTrays || [])
+        .filter(function (t) { return delinkedIdSet.indexOf(t.tray_id) === -1; })
+        .concat(
+          skippedExpectedDelinkIds
+            .filter(function (id) { return origById.hasOwnProperty(id); })
+            .map(function (id) { return { tray_id: id, qty: origById[id].qty }; })
+        );
       var accInputs = Array.from(acceptSlotsCont.querySelectorAll('.nq-acc-tray-input'));
       var slot0Val = accInputs.length > 0 ? accInputs[0].value.trim().toUpperCase() : '';
       if (!slot0Val) {
@@ -2881,10 +2917,13 @@ document.addEventListener("DOMContentLoaded", function () {
       applyScanLockAndOrder();
     }
 
-    // Strict one-by-one gate: Reject must be fully scanned before Delink unlocks;
-    // Delink (if any slots are required) must be fully scanned before Accept unlocks.
-    // Top-tray chips route to whichever of Delink/Accept is currently unlocked, and
-    // grey out only while both are locked. Slots within a section still fill in order.
+    // Two valid scan sequences are supported:
+    //   A) Delink -> Accept -> Reject
+    //   B) Reject -> Delink -> Accept
+    // Reject is never gated — it may be scanned first (B) or last (A). The one
+    // fixed invariant is that Accept must always be associated with a completed
+    // Delink scan, so Accept stays locked until every required Delink slot is
+    // filled (trivially satisfied when no delink is required for this lot).
     function applyScanLockAndOrder() {
       var rejInputs = Array.from(rejectSlotsCont.querySelectorAll('.nq-rej-tray-input'));
       var accInputs = Array.from(acceptSlotsCont.querySelectorAll('.nq-acc-tray-input'));
@@ -2896,10 +2935,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
       var rejectComplete = isSectionComplete(rejInputs);
       var delinkComplete = isSectionComplete(delinkInputs);
-      var lockDelink = !rejectComplete;
-      var lockAccept = !rejectComplete || !delinkComplete;
+      var lockDelink = false;
+      var lockAccept = !delinkComplete;
       state.lockDelink = lockDelink;
       state.lockAccept = lockAccept;
+
+      if (acceptLockInfo) {
+        if (lockAccept && delinkInputs.length > 0) {
+          acceptLockInfo.textContent = 'Complete the Delink Tray scan before scanning Accept trays.';
+          acceptLockInfo.style.display = '';
+        } else {
+          acceptLockInfo.textContent = '';
+          acceptLockInfo.style.display = 'none';
+        }
+      }
 
       function styleInput(inp, locked) {
         inp.disabled = locked;
@@ -2920,13 +2969,10 @@ document.addEventListener("DOMContentLoaded", function () {
       applySection(delinkInputs, lockDelink);
       applySection(accInputs, lockAccept);
 
-      // Any original tray can be tapped straight into an open reject slot even
-      // before the reject section is otherwise "complete" — the operator picks
-      // which tray to reuse as its own reject container; the backend is the one
-      // that validates whether that particular pick actually clears (i.e. it
-      // matches a tray the allocation freed up). The frontend does not pre-filter.
-      var hasEmptyRejSlot = rejInputs.some(function (inp) { return !inp.value.trim(); });
-      var chipsLocked = (lockDelink && lockAccept) && !(!rejectComplete && hasEmptyRejSlot);
+      // Chips only go inert once every section is fully scanned — with Reject
+      // and Delink both always tappable (per the two supported sequences),
+      // there's nothing left for a tap to route to at that point.
+      var chipsLocked = rejectComplete && delinkComplete && isSectionComplete(accInputs);
       origContainer.querySelectorAll('span[data-tray-id]').forEach(function (chip) {
         chip.style.pointerEvents = chipsLocked ? 'none' : '';
         chip.style.filter = chipsLocked ? 'grayscale(1)' : '';
@@ -2953,23 +2999,25 @@ document.addEventListener("DOMContentLoaded", function () {
         chip.dataset.isTop = t.is_top ? '1' : '0';
         chip.dataset.selected = '0';
         chip.addEventListener('click', function () {
-          if (state.lockDelink && state.lockAccept) {
-            // Reject not complete yet — any original tray can be tapped here,
-            // straight into the next open reject slot. The operator picks which
-            // one to reuse; the backend validates the pick on submit.
-            fillRejectSlotFromTap(t.tray_id);
-            return;
-          }
-          if (!state.lockDelink && getFocusedTrayInput('.nq-delink-tray-input', delinkList)) {
-            fillDelinkSlotFromTap(t.tray_id);
-            return;
-          }
-          if (!state.lockAccept && getFocusedTrayInput('.nq-acc-tray-input', acceptSlotsCont)) {
-            fillAcceptSlotFromTap(t.tray_id);
-            return;
-          }
+          // Reject, Delink and Accept can each be the starting section
+          // (Sequence A: Delink -> Accept -> Reject; Sequence B: Reject ->
+          // Delink -> Accept), so whichever input is actually focused gets
+          // the tap first.
+          var focusedRej = getFocusedTrayInput('.nq-rej-tray-input', rejectSlotsCont);
+          var focusedDelinkInp = getFocusedTrayInput('.nq-delink-tray-input', delinkList);
+          var focusedAcc = getFocusedTrayInput('.nq-acc-tray-input', acceptSlotsCont);
+          if (focusedRej) { fillRejectSlotFromTap(t.tray_id); return; }
+          if (!state.lockDelink && focusedDelinkInp) { fillDelinkSlotFromTap(t.tray_id); return; }
+          if (!state.lockAccept && focusedAcc) { fillAcceptSlotFromTap(t.tray_id); return; }
+
+          // Nothing focused — route by what still needs this tray.
           if (!state.lockDelink && (state.autoDelinkIds || []).indexOf(t.tray_id) !== -1) {
             fillDelinkSlotFromTap(t.tray_id);
+            return;
+          }
+          var hasEmptyRejSlotNow = Array.from(rejectSlotsCont.querySelectorAll('.nq-rej-tray-input')).some(function (inp) { return !inp.value.trim(); });
+          if (hasEmptyRejSlotNow) {
+            fillRejectSlotFromTap(t.tray_id);
             return;
           }
           if (!state.lockAccept) {
