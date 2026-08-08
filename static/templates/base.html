@@ -2753,28 +2753,9 @@
             }
          });
       </script>
-      <!-- /* Highlight active sidebar link based on current URL */ -->
-      <script nonce="{{ csp_nonce }}">
-         document.addEventListener("DOMContentLoaded", function() {
-           // Highlight sidebar nav-link matching current URL
-           var currentUrl = window.location.pathname;
-           document.querySelectorAll('.sidebar .nav-link').forEach(function(link) {
-             if (link.href && link.href.includes(currentUrl)) {
-               link.classList.add('active');
-               // Also expand parent menu if it's a submenu
-               var parentCollapse = link.closest('.collapse');
-               if (parentCollapse) {
-                 parentCollapse.classList.add('show');
-                 var parentNav = parentCollapse.previousElementSibling;
-                 if (parentNav && parentNav.classList.contains('nav-link')) {
-                   parentNav.classList.add('active');
-                 }
-               }
-             }
-           });
-         });
-      </script>
-      <!-- /*  Expand sidebar when a menu icon is clicked in minimized mode */ -->
+      <!-- /* Highlight active sidebar link based on current URL, and expand its
+           submenu — including auto-expanding the sidebar itself if a minimized
+           icon is clicked */ -->
       <script nonce="{{ csp_nonce }}">
          document.addEventListener("DOMContentLoaded", function() {
            // Highlight sidebar nav-link matching current URL

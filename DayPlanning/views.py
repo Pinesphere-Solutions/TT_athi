@@ -2883,7 +2883,7 @@ class TrayIdUniqueCheckAPIView(APIView):
             batch_tray_type = batch_instance.tray_type
             scanned_tray_type = tray.tray_type
             
-            print(f"🔍 Tray Type Validation: Batch={batch_tray_type}, Scanned Tray={scanned_tray_type}")
+            logger.debug(f"Tray Type Validation: Batch={batch_tray_type}, Scanned Tray={scanned_tray_type}")
             
             # If either tray type is not set, allow but warn
             if not batch_tray_type or not scanned_tray_type:
@@ -2903,7 +2903,7 @@ class TrayIdUniqueCheckAPIView(APIView):
             scanned_category = _norm_cat(scanned_tray_type)
 
             if batch_category != scanned_category:
-                error_msg = f"❌ Tray Type Mismatch: Batch requires '{batch_category}' type but scanned tray '{tray.tray_id}' is '{scanned_category}' type"
+                error_msg = f"Tray Type Mismatch: Batch requires '{batch_category}' type but scanned tray '{tray.tray_id}' is '{scanned_category}' type"
                 return {
                     'compatible': False,
                     'error': error_msg,
@@ -2916,7 +2916,7 @@ class TrayIdUniqueCheckAPIView(APIView):
             scanned_tray_capacity = tray.tray_capacity
 
             if scanned_tray_capacity and scanned_tray_capacity != expected_prejig_cap:
-                error_msg = f"⚠️ Tray Capacity Mismatch: Expected {expected_prejig_cap} for {batch_category} type, but scanned tray has capacity {scanned_tray_capacity}"
+                error_msg = f"Tray Capacity Mismatch: Expected {expected_prejig_cap} for {batch_category} type, but scanned tray has capacity {scanned_tray_capacity}"
                 return {
                     'compatible': False,
                     'error': error_msg,
@@ -2933,7 +2933,7 @@ class TrayIdUniqueCheckAPIView(APIView):
             }
             
         except Exception as e:
-            logger.error(f"❌ Error in tray type validation: {str(e)}", exc_info=True)
+            logger.error(f"Error in tray type validation: {str(e)}", exc_info=True)
             return {
                 'compatible': False,
                 'error': 'Unable to process the request. Please verify the submitted data and try again.',
