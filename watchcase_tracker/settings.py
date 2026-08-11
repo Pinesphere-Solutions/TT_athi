@@ -35,7 +35,8 @@ SECRET_KEY = 'django-insecure-gjye57-rx)^o3)f$ix_jy#802*56@oljtx1zrpo6_$-hzvb#mv
 # process, which on a long-lived IIS worker leaks memory and makes every
 # request progressively slower (root cause of the escalating login latency).
 # Set DJANGO_DEBUG=True in your local .env for development.
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False').strip().lower() in ('1', 'true', 'yes', 'on')
+DEBUG = True
+
 
 ALLOWED_HOSTS = [
     "trackandtrace.titan.in",
@@ -125,7 +126,6 @@ MIDDLEWARE = [
     # First in the chain so it wraps everything below it (security, session,
     # auth, view, template) and can attribute the full request time to a
     # per-request breakdown. See watchcase_tracker/perf_logger.py.
-    'watchcase_tracker.middleware.performance_middleware.PerformanceProfilerMiddleware',
     'adminportal.middleware.BlockOptionsMiddleware',
     # VAPT #13/#33: strip version-disclosure headers (Server, X-Powered-By, etc.)
     'adminportal.middleware.SecurityHeadersMiddleware',
@@ -210,35 +210,25 @@ REST_FRAMEWORK = {
     # No CORS or API discovery is required in this application.
     'DEFAULT_METADATA_CLASS': None,
     'DEFAULT_THROTTLE_RATES': {
-        'user': '60/min',
-    },
+            'user': '60/min',
+        },  
 }
 
 
-# Dev Database
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'watchcase2026',
+        'NAME': 'tttt',
         'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
+        'PASSWORD': 'athithya@post',
+        'HOST': '127.0.0.1',    # ← changed from 'localhost'
         'PORT': '5432',
+        'CONN_MAX_AGE': 60,     # ← added
     }
 }
 
-# UAT Database
-""" DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'watchcasetrack',
-        'USER':'postgres',
-        'PASSWORD':'postgres',
-        'HOST':'127.0.0.1',
-        'PORT':'5432',
-        'CONN_MAX_AGE':60,
-    }
-} """
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -447,37 +437,31 @@ LOGGING = {
 MSAL_CLIENT_ID = os.getenv("MSAL_CLIENT_ID", "54a2fd19-0009-4e29-9d7b-b33e9ae8fbfa")
 MSAL_CLIENT_SECRET = os.getenv("MSAL_CLIENT_SECRET")
 # MSAL_TENANT_ID = os.getenv("MSAL_TENANT_ID", "common")
-# The Azure App Registration's Redirect URI is registered WITH a trailing
-# slash. _get_redirect_uri() (watchcase_tracker/sso.py) falls back to
-# reverse('microsoft_callback') when this is unset, and that URL name is
-# bound to the non-trailing-slash route in urls.py, which built a redirect
-# URI that Azure rejected with AADSTS50011 ("... had a trailing slash").
-# Setting this explicitly makes the sent redirect_uri match what's
-# registered in Azure, independent of which urls.py route owns the name.
-MSAL_REDIRECT_PATH = "/auth/microsoft/callback/"
+# Use the callback path without a trailing slash so it is compatible with the
+# common Azure App Registration redirect URI format.
+
+# MSAL_REDIRECT_PATH = "/auth/microsoft/callback/"
 
 
 
 MSAL_TENANT_ID = os.getenv("MSAL_TENANT_ID","04132f71-f746-4a5b-a30e-66ea6d16714c",).strip()
+ 
+MSAL_REDIRECT_URI_BASE = os.getenv("MSAL_REDIRECT_URI_BASE","https://trackandtrace.titan.in").strip().rstrip("/")
+
 
 # Optional fixed origin (scheme+host[:port]) for the OAuth redirect URI, e.g.
-# "http://localhost:8000" or "https://titan.example.com". Pinning to one
-# Azure-registered URI avoids AADSTS50011 mismatches from how a browser
-# reaches the app (127.0.0.1 vs localhost, etc). This used to be assigned
-# twice - a "https://trackandtrace.titan.in" default immediately clobbered by
-# an unconditional "http://localhost:8000" default below it - so every
-# environment without an explicit env var silently sent Microsoft a
-# localhost redirect_uri. If the browser was on a different origin than that
-# (e.g. 127.0.0.1:8000), Microsoft's callback lands on an origin that never
-# receives the login page's session cookie, so the saved msal_states never
-# arrive and the callback raises "State mismatch or missing" even though the
-# login itself was legitimate. Deriving the default from DEBUG keeps a single
-# source of truth: local/dev pins to localhost:8000 (access the app via that
-# exact host, not 127.0.0.1, so the session cookie's origin matches),
-# production pins to the deployed domain, and MSAL_REDIRECT_URI_BASE still
-# lets ops override either from the .env alone.
-MSAL_REDIRECT_URI_BASE = os.getenv(
-    "MSAL_REDIRECT_URI_BASE",
-    "http://localhost:8000" if DEBUG else "https://trackandtrace.titan.in",
-).strip().rstrip("/")
+# "http://localhost:8000" or "https://titan.example.com". When unset, the
+# redirect URI is derived from the incoming request's host, which only works
+# if that exact origin+MSAL_REDIRECT_PATH is registered in the Azure App
+# Registration's "Redirect URIs". Set this to pin the app to one Azure-registered
+# URI regardless of how a browser reaches it (127.0.0.1 vs localhost, etc).
+MSAL_REDIRECT_URI_BASE = os.getenv("MSAL_REDIRECT_URI_BASE", "http://localhost:8000")
 MSAL_SCOPES = ["User.Read"]
+
+
+
+
+
+
+
+
