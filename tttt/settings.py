@@ -35,7 +35,7 @@ SECRET_KEY = 'django-insecure-gjye57-rx)^o3)f$ix_jy#802*56@oljtx1zrpo6_$-hzvb#mv
 # process, which on a long-lived IIS worker leaks memory and makes every
 # request progressively slower (root cause of the escalating login latency).
 # Set DJANGO_DEBUG=True in your local .env for development.
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').strip().lower() in ('1', 'true', 'yes', 'on')
 
 ALLOWED_HOSTS = [
     "trackandtrace.titan.in",
@@ -219,16 +219,26 @@ REST_FRAMEWORK = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'tttt',
+        'NAME': 'watchcase2026',
         'USER': 'postgres',
-        'PASSWORD': 'athithya@post',
-        'HOST': '127.0.0.1',    # ← changed from 'localhost'
+        'PASSWORD': 'postgres',
+        'HOST': 'localhost',
         'PORT': '5432',
-        'CONN_MAX_AGE': 60,     # ← added
     }
 }
 
-
+# UAT Database
+""" DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'watchcasetrack',
+        'USER':'postgres',
+        'PASSWORD':'postgres',
+        'HOST':'127.0.0.1',
+        'PORT':'5432',
+        'CONN_MAX_AGE':60,
+    }
+} """
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -471,9 +481,3 @@ MSAL_REDIRECT_URI_BASE = os.getenv(
     "http://localhost:8000" if DEBUG else "https://trackandtrace.titan.in",
 ).strip().rstrip("/")
 MSAL_SCOPES = ["User.Read"]
-
-
-
-
-
-
