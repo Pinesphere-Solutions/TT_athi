@@ -1163,7 +1163,10 @@
       <title>Titan</title>
       <!-- plugins:css -->
       <script nonce="{{ csp_nonce }}" src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+      <link rel="stylesheet" href="{% static 'assets/vendors/feather/feather.css' %}">
+      <link rel="stylesheet" href="{% static 'assets/vendors/ti-icons/css/themify-icons.css' %}">
       <link rel="stylesheet" href="{% static 'assets/vendors/css/vendor.bundle.base.css' %}">
+      <link rel="stylesheet" href="{% static 'assets/vendors/font-awesome/css/font-awesome.min.css' %}">
       <!-- endinject -->
       <!-- Plugin css for this page -->
       <!-- <link rel="stylesheet" href="{% static 'assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css' %}"> -->
