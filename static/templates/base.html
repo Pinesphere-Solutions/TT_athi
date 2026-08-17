@@ -5063,9 +5063,9 @@
 </script>
 
 <!-- DB-backed global keyboard shortcut manager -->
-<script nonce="{{ csp_nonce }}" src="{% static 'assets/js/ttt-responsive-system.js' %}?v=tabdebug-20260604-3"></script>
-<script nonce="{{ csp_nonce }}" src="{% static 'assets/js/ttt-stock-hover.js' %}"></script>
-<script nonce="{{ csp_nonce }}" src="{% static 'js/global_shortcut_manager.js' %}"></script>
+<script defer nonce="{{ csp_nonce }}" src="{% static 'assets/js/ttt-responsive-system.js' %}?v=tabdebug-20260604-3"></script>
+<script defer nonce="{{ csp_nonce }}" src="{% static 'assets/js/ttt-stock-hover.js' %}"></script>
+<script defer nonce="{{ csp_nonce }}" src="{% static 'js/global_shortcut_manager.js' %}"></script>
 
 <!-- Access denied notification -->
 <script nonce="{{ csp_nonce }}">
@@ -5236,7 +5236,7 @@
   </div>
 </div>
 
-<script src="{% static 'js/sop_viewer.js' %}" nonce="{{ csp_nonce }}"></script>
+<script defer src="{% static 'js/sop_viewer.js' %}" nonce="{{ csp_nonce }}"></script>
 
 <!-- Network stability monitor -->
 <script nonce="{{ csp_nonce }}">
