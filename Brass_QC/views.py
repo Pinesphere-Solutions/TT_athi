@@ -1,4 +1,4 @@
-﻿from rest_framework.views import APIView
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.renderers import TemplateHTMLRenderer
 from django.shortcuts import render
@@ -118,17 +118,6 @@ class BrassPickTableView(APIView):
         master_data = []
         for stock_obj in page_obj.object_list:
             batch = stock_obj.batch_id
-            
-            current_stage_display = (
-                stock_obj.current_stage
-                or _compute_brass_qc_display_stage(stock_obj)
-            )
-
-            lot_status = (
-                'Released'
-                if current_stage_display != 'Brass QC'
-                else 'Yet to Release'
-            )
             data = {
                 'batch_id': batch.batch_id,
                 'lot_id': stock_obj.lot_id,
@@ -182,6 +171,7 @@ class BrassPickTableView(APIView):
                 'polishing_stk_no': batch.polishing_stk_no,
                 'category': batch.category,
                 'last_process_module': stock_obj.last_process_module,
+                'current_stage': stock_obj.current_stage,
                 'type_of_input': get_type_of_input_for_batch(batch),
             }
             master_data.append(data)
@@ -229,7 +219,7 @@ class BrassPickTableView(APIView):
             else:
                 data['no_of_trays'] = 0
             
-            if data.get('send_brass_qc'):
+            if data.get('send_brass_qc') or data.get('send_brass_audit_to_qc'):
                 data['brass_qc_rejection'] = False
                 data['brass_physical_qty'] = 0
                 data['brass_rejection_total_qty'] = 0
@@ -274,13 +264,21 @@ class BrassPickTableView(APIView):
             data['available_qty'] = data.get('brass_qc_accepted_qty') if data.get('brass_qc_accepted_qty') and data.get('brass_qc_accepted_qty') > 0 else (data.get('brass_physical_qty') if data.get('brass_physical_qty') and data.get('brass_physical_qty') > 0 else data.get('display_accepted_qty', 0))
 
             # ── Backend-computed flags — move ALL decision logic here ──
-            # Delete button: only when lot has no acceptance/rejection yet and qty is verified
+            # Delete button: only when the lot is still an unprocessed Brass QC
+            # pick.  A completed BQC submission is permanent history and must keep
+            # the lot registered in the Brass QC Completed Table, even if routing
+            # to Brass Audit/IQF later clears the current pick-table flags.
+            data['has_completed_bqc_submission'] = Brass_QC_Submission.objects.filter(
+                lot_id=lot_id,
+                is_completed=True,
+            ).exists()
             data['can_delete'] = (
                 not data.get('brass_qc_accptance') and
                 not data.get('brass_qc_rejection') and
                 not data.get('brass_accepted_tray_scan_status') and
                 not data.get('brass_qc_few_cases_accptance') and
-                data.get('brass_qc_accepted_qty_verified', False)
+                data.get('brass_qc_accepted_qty_verified', False) and
+                not data['has_completed_bqc_submission']
             )
 
             # QC circle status: determines background color
@@ -317,7 +315,21 @@ class BrassPickTableView(APIView):
             elif data.get('brass_qc_accepted_qty_verified'):
                 data['lot_status'] = 'Yet to Release'
             else:
-                data['lot_status'] = 'Yet to Start'
+                qc_completed = any((
+                    data.get('brass_qc_rejection'),
+                    data.get('brass_qc_few_cases_accptance'),
+                    data.get('brass_qc_accptance'),
+                ))
+                if qc_completed and data.get('current_stage') not in (None, '', 'Brass QC'):
+                    data['lot_status'] = 'Released'
+                elif qc_completed:
+                    data['lot_status'] = 'Yet to Release'
+                elif data.get('brass_qc_accepted_qty_verified'):
+                    # Persisted checkbox state: the lot has been picked and
+                    # remains in Brass QC until a submission is completed.
+                    data['lot_status'] = 'In Progress'
+                else:
+                    data['lot_status'] = 'Yet to Start'
 
         context = {
             'master_data': master_data,
@@ -511,6 +523,7 @@ class BrassCompletedView(APIView):
                 'tray_capacity': batch.tray_capacity,
                 'stock_lot_id': stock_obj.lot_id,
                 'last_process_module': stock_obj.last_process_module,
+                'current_stage': stock_obj.current_stage,
                 # Same stale-vs-child-progress resolution as current_stage_display above —
                 # this is the field the template actually renders as "Current Stage".
                 'next_process_module': current_stage_display,
@@ -646,18 +659,26 @@ def brass_qc_toggle_verified(request):
     logger.info(f"[BrassQC] Toggle verified: lot_id={lot_id}, verified={ts.brass_qc_accepted_qty_verified}")
 
     # ── Bin icon activation rule (mirrors BrassPickTableView.can_delete) ──
+    # A completed BQC submission permanently registers the lot in the
+    # Brass QC Completed Table, so it is never eligible for deletion.
+    has_completed_bqc_submission = Brass_QC_Submission.objects.filter(
+        lot_id=lot_id,
+        is_completed=True,
+    ).exists()
     can_delete = (
         not ts.brass_qc_accptance and
         not ts.brass_qc_rejection and
         not ts.brass_accepted_tray_scan_status and
         not ts.brass_qc_few_cases_accptance and
-        ts.brass_qc_accepted_qty_verified
+        ts.brass_qc_accepted_qty_verified and
+        not has_completed_bqc_submission
     )
 
     return JsonResponse({
         "success": True,
         "lot_id": lot_id,
         "brass_qc_accepted_qty_verified": ts.brass_qc_accepted_qty_verified,
+        "lot_status": "In Progress" if ts.brass_qc_accepted_qty_verified else "Yet to Start",
         "last_process_module": ts.last_process_module,
         "can_delete": can_delete,
     })
@@ -689,14 +710,35 @@ def brass_qc_delete_batch(request):
     if not ts:
         return JsonResponse({"success": False, "error": "Lot not found"}, status=404)
 
+    # A lot that has already been processed/submitted by Brass QC must never be
+    # deleted from TotalStockModel, even if the processing flags were cleared
+    # while routing it to Brass Audit or IQF.  Those flags describe the current
+    # pick-table state; the completed submission is the permanent BQC history
+    # that keeps the lot registered in the Brass QC Completed Table.
+    has_completed_bqc_submission = Brass_QC_Submission.objects.filter(
+        lot_id=lot_id,
+        is_completed=True,
+    ).exists()
+
     can_delete = (
         not ts.brass_qc_accptance and
         not ts.brass_qc_rejection and
         not ts.brass_accepted_tray_scan_status and
         not ts.brass_qc_few_cases_accptance and
-        ts.brass_qc_accepted_qty_verified
+        ts.brass_qc_accepted_qty_verified and
+        not has_completed_bqc_submission
     )
     if not can_delete:
+        if has_completed_bqc_submission:
+            logger.warning(
+                "Brass QC Delete Batch blocked: lot_id=%s already has a completed BQC submission; "
+                "lot must remain registered in Brass QC Completed Table.",
+                lot_id,
+            )
+            return JsonResponse({
+                "success": False,
+                "error": "This lot has already been processed by Brass QC and cannot be deleted.",
+            }, status=409)
         return JsonResponse({"success": False, "error": "This lot can no longer be deleted."}, status=409)
 
     with transaction.atomic():
